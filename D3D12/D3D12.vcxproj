@@ -111,9 +111,9 @@
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>false</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
+      <ConformanceMode>false</ConformanceMode>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -128,9 +128,9 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>false</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
+      <ConformanceMode>false</ConformanceMode>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -141,25 +141,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\Common\Camera.cpp" />
-    <ClCompile Include="src\Common\d3dApp.cpp" />
-    <ClCompile Include="src\Common\d3dUtil.cpp" />
-    <ClCompile Include="src\Common\DDSTextureLoader.cpp" />
-    <ClCompile Include="src\Common\GameTimer.cpp" />
-    <ClCompile Include="src\Common\GeometryGenerator.cpp" />
-    <ClCompile Include="src\Common\MathHelper.cpp" />
-    <ClCompile Include="src\BoxApp.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="src\Common\Camera.h" />
-    <ClInclude Include="src\Common\d3dApp.h" />
-    <ClInclude Include="src\Common\d3dUtil.h" />
-    <ClInclude Include="src\Common\d3dx12.h" />
-    <ClInclude Include="src\Common\DDSTextureLoader.h" />
-    <ClInclude Include="src\Common\GameTimer.h" />
-    <ClInclude Include="src\Common\GeometryGenerator.h" />
-    <ClInclude Include="src\Common\MathHelper.h" />
-    <ClInclude Include="src\Common\UploadBuffer.h" />
+    <ClCompile Include="src\WinMain.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
