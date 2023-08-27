@@ -5,3 +5,4 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	while (true);
 	return 0;
 }
+
