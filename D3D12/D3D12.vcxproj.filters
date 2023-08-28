@@ -13,33 +13,36 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Common">
+      <UniqueIdentifier>{2aa2734f-8ca8-474f-b71d-ec8d1d65b5ef}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\WinMain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SRC\COMMON\D3DAPP.CPP">
+      <Filter>Common</Filter>
+    </ClCompile>
     <ClCompile Include="src\Common\d3dUtil.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Common</Filter>
     </ClCompile>
     <ClCompile Include="src\Common\GameTimer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="SRC\COMMON\D3DAPP.CPP">
-      <Filter>Source Files</Filter>
+      <Filter>Common</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\Common\D3DApp.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="src\Common\GameTimer.h">
+      <Filter>Common</Filter>
     </ClInclude>
     <ClInclude Include="src\Common\d3dx12.h">
-      <Filter>Header Files</Filter>
+      <Filter>Common</Filter>
     </ClInclude>
     <ClInclude Include="src\Common\d3dUtil.h">
-      <Filter>Header Files</Filter>
+      <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="src\Common\GameTimer.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="src\Common\D3DApp.h">
+      <Filter>Common</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
