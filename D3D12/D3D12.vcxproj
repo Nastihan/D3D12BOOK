@@ -157,6 +157,7 @@
     <ClInclude Include="src\Common\DDSTextureLoader.h" />
     <ClInclude Include="src\Common\GameTimer.h" />
     <ClInclude Include="src\Common\MathHelper.h" />
+    <ClInclude Include="src\UploadBuffer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

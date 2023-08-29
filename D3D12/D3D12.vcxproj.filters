@@ -15,7 +15,7 @@
     <Filter Include="Shaders">
       <UniqueIdentifier>{98dce88c-9503-4602-b088-702932874466}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Bindable">
+    <Filter Include="Header Files\Bindable">
       <UniqueIdentifier>{aa3a11fb-8fc8-4320-99bf-459cb8258052}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -63,6 +63,9 @@
     </ClInclude>
     <ClInclude Include="src\Common\D3DApp.h">
       <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\UploadBuffer.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
