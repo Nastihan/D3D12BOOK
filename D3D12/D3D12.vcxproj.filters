@@ -9,15 +9,14 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
-    </Filter>
     <Filter Include="Common">
       <UniqueIdentifier>{2aa2734f-8ca8-474f-b71d-ec8d1d65b5ef}</UniqueIdentifier>
     </Filter>
-    <Filter Include="App">
-      <UniqueIdentifier>{9453423a-9b7f-4632-b05c-cab96af94d50}</UniqueIdentifier>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{98dce88c-9503-4602-b088-702932874466}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Bindable">
+      <UniqueIdentifier>{aa3a11fb-8fc8-4320-99bf-459cb8258052}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -37,10 +36,10 @@
       <Filter>Common</Filter>
     </ClCompile>
     <ClCompile Include="SRC\COMMON\D3DApp.CPP">
-      <Filter>App</Filter>
+      <Filter>Common</Filter>
     </ClCompile>
     <ClCompile Include="src\App.cpp">
-      <Filter>App</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -59,11 +58,11 @@
     <ClInclude Include="src\Common\MathHelper.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="src\Common\D3DApp.h">
-      <Filter>App</Filter>
-    </ClInclude>
     <ClInclude Include="src\App.h">
-      <Filter>App</Filter>
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Common\D3DApp.h">
+      <Filter>Common</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
