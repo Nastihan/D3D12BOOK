@@ -1,16 +1,16 @@
-#include "App.h"
+#include "FirstApp.h"
 #include <DirectXColors.h>
 
-App::App(HINSTANCE hInstance)
+FirstApp::FirstApp(HINSTANCE hInstance)
     : D3DApp(hInstance)
 {
 }
 
-App::~App()
+FirstApp::~FirstApp()
 {
 }
 
-bool App::Initialize()
+bool FirstApp::Initialize()
 {
     if (!D3DApp::Initialize())
     {
@@ -19,16 +19,16 @@ bool App::Initialize()
     return true;
 }
 
-void App::OnResize()
+void FirstApp::OnResize()
 {
     D3DApp::OnResize();
 }
 
-void App::Update(const GameTimer& gt)
+void FirstApp::Update(const GameTimer& gt)
 {
 }
 
-void App::Draw(const GameTimer& gt)
+void FirstApp::Draw(const GameTimer& gt)
 {
     ThrowIfFailed(pCmdListAlloc->Reset());
     ThrowIfFailed(pCommandList->Reset(pCmdListAlloc.Get(), nullptr));

@@ -18,6 +18,12 @@
     <Filter Include="Header Files\Bindable">
       <UniqueIdentifier>{aa3a11fb-8fc8-4320-99bf-459cb8258052}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Apps">
+      <UniqueIdentifier>{6d393dec-adf0-4609-94f9-eaa08428f540}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Apps">
+      <UniqueIdentifier>{66047fa7-40f9-43e5-948e-23e11c0b6d34}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\WinMain.cpp">
@@ -35,11 +41,11 @@
     <ClCompile Include="src\Common\DDSTextureLoader.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="SRC\COMMON\D3DApp.CPP">
-      <Filter>Common</Filter>
+    <ClCompile Include="src\FirstApp.cpp">
+      <Filter>Source Files\Apps</Filter>
     </ClCompile>
-    <ClCompile Include="src\App.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="SRC\COMMON\D3DApp.CPP">
+      <Filter>Source Files\Apps</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -58,14 +64,14 @@
     <ClInclude Include="src\Common\MathHelper.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="src\App.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Common\D3DApp.h">
-      <Filter>Common</Filter>
-    </ClInclude>
     <ClInclude Include="src\UploadBuffer.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\FirstApp.h">
+      <Filter>Header Files\Apps</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Common\D3DApp.h">
+      <Filter>Header Files\Apps</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

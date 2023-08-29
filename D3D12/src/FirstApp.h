@@ -1,11 +1,11 @@
 #pragma once
 #include "Common/D3DApp.h"
 
-class App : public D3DApp
+class FirstApp : public D3DApp
 {
 public:
-	App(HINSTANCE hInstance);
-	~App();
+	FirstApp(HINSTANCE hInstance);
+	~FirstApp();
 
 	virtual bool Initialize() override;
 private:
