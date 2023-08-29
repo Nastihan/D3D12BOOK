@@ -39,7 +39,7 @@ void BoxApp::Draw(const GameTimer& gt)
     pCommandList->RSSetScissorRects(1, &scissorRect);
 
     pCommandList->ClearRenderTargetView(
-        CurrentBackBufferView(), DirectX::Colors::Aquamarine, 0, nullptr);
+        CurrentBackBufferView(), DirectX::Colors::DimGray, 0, nullptr);
     pCommandList->ClearDepthStencilView(
         DepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
