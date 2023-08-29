@@ -303,7 +303,7 @@ void D3DApp::OnResize()
 	for (UINT i = 0; i < SwapChainBufferCount; i++)
 	{
 		ThrowIfFailed(pSwapChain->GetBuffer(i, IID_PPV_ARGS(&pSwapChainBuffer[i])));
-		pDevice->CreateRenderTargetView(pSwapChainBuffer->Get(), nullptr, rtvHeapHandle);
+		pDevice->CreateRenderTargetView(pSwapChainBuffer[i].Get(), nullptr, rtvHeapHandle);
 		rtvHeapHandle.Offset(1, rtvDescriptorSize);
 	}
 	// dsv buffer & view
