@@ -98,11 +98,10 @@ protected:
 	UINT cbvSrvUavDescriptorSize = 0;
 
 	// Derived class should set these in derived constructor to customize starting values.
-	std::wstring mainWndCaption = L"d3d App";
+	std::wstring mainWndCaption = L"d3d12 App";
 	D3D_DRIVER_TYPE d3dDriverType = D3D_DRIVER_TYPE_HARDWARE;
 	DXGI_FORMAT backBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 	DXGI_FORMAT depthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 	int clientWidth = 1600;
 	int clientHeight = 900;
-
 };

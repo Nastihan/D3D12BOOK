@@ -28,8 +28,10 @@ D3DApp::D3DApp(HINSTANCE hInstance)
 
 D3DApp::~D3DApp()
 {
-	if (pDevice != nullptr);
-	FlushCommandQueue();
+	if (pDevice != nullptr)
+	{
+		FlushCommandQueue();
+	}
 }
 
 HINSTANCE D3DApp::GetAppInst() const
