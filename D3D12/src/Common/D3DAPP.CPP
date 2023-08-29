@@ -265,10 +265,10 @@ void D3DApp::CreateRtvAndDsvDescriptorHeaps()
 	ThrowIfFailed(pDevice->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&pRtvHeap)));
 
 	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc{};
-	rtvHeapDesc.NumDescriptors = 1;
-	rtvHeapDesc.NodeMask = 0;
-	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+	dsvHeapDesc.NumDescriptors = 1;
+	dsvHeapDesc.NodeMask = 0;
+	dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+	dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	ThrowIfFailed(pDevice->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&pDsvHeap)));
 }
 
@@ -367,7 +367,7 @@ void D3DApp::OnResize()
 bool D3DApp::InitMainWindow()
 {
 	WNDCLASS wc;
-	wc.style = CS_E_SCHEMA_MISMATCH | CS_VREDRAW;
+	wc.style = CS_HREDRAW | CS_VREDRAW;
 	wc.lpfnWndProc = MainWndProc;
 	wc.cbClsExtra = 0;
 	wc.cbWndExtra = 0;
@@ -416,11 +416,11 @@ bool D3DApp::InitDirect3D()
 	ThrowIfFailed(CreateDXGIFactory1(IID_PPV_ARGS(&pDxgiFactory)));
 
 	// hardware device
-	HRESULT hardWareResult = D3D12CreateDevice(
+	ThrowIfFailed( D3D12CreateDevice(
 		nullptr,
-		D3D_FEATURE_LEVEL_12_2,
+		D3D_FEATURE_LEVEL_12_1,
 		IID_PPV_ARGS(&pDevice)
-	);
+	));
 
 	pDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&pFence));
 
@@ -510,6 +510,7 @@ void D3DApp::FlushCommandQueue()
 	// Add an instruction to the command queue to set a new fence point.  Because we 
 	// are on the GPU timeline, the new fence point won't be set until the GPU finishes
 	// processing all the commands prior to this Signal().
+
 	ThrowIfFailed(pCommandQueue->Signal(pFence.Get(), currentFence));
 
 	// Wait until the GPU has completed commands up to this fence point.

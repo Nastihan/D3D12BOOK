@@ -16,13 +16,13 @@
     <Filter Include="Common">
       <UniqueIdentifier>{2aa2734f-8ca8-474f-b71d-ec8d1d65b5ef}</UniqueIdentifier>
     </Filter>
+    <Filter Include="App">
+      <UniqueIdentifier>{9453423a-9b7f-4632-b05c-cab96af94d50}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\WinMain.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="SRC\COMMON\D3DAPP.CPP">
-      <Filter>Common</Filter>
     </ClCompile>
     <ClCompile Include="src\Common\d3dUtil.cpp">
       <Filter>Common</Filter>
@@ -36,6 +36,12 @@
     <ClCompile Include="src\Common\DDSTextureLoader.cpp">
       <Filter>Common</Filter>
     </ClCompile>
+    <ClCompile Include="SRC\COMMON\D3DApp.CPP">
+      <Filter>App</Filter>
+    </ClCompile>
+    <ClCompile Include="src\App.cpp">
+      <Filter>App</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Common\GameTimer.h">
@@ -47,14 +53,17 @@
     <ClInclude Include="src\Common\d3dUtil.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="src\Common\D3DApp.h">
-      <Filter>Common</Filter>
-    </ClInclude>
     <ClInclude Include="src\Common\DDSTextureLoader.h">
       <Filter>Common</Filter>
     </ClInclude>
     <ClInclude Include="src\Common\MathHelper.h">
       <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Common\D3DApp.h">
+      <Filter>App</Filter>
+    </ClInclude>
+    <ClInclude Include="src\App.h">
+      <Filter>App</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

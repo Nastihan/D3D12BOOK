@@ -1,5 +1,6 @@
 #include <Windows.h>
-#include "Common/D3DApp.h"
+#include "App.h"
+
 int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
 #if defined(DEBUG) | defined(_DEBUG)
@@ -8,9 +9,13 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
 	try
 	{
-		while (true);
-		return 0;
-		//D3DApp app(hInstance);
+		App app(hInstance);
+		if (!app.Initialize())
+		{
+			return 0;
+		}
+
+		return app.Run();
 	}
 	catch (DxException& e)
 	{

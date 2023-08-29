@@ -141,7 +141,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="SRC\COMMON\D3DAPP.CPP" />
+    <ClCompile Include="src\App.cpp" />
+    <ClCompile Include="SRC\COMMON\D3DApp.CPP" />
     <ClCompile Include="src\Common\d3dUtil.cpp" />
     <ClCompile Include="src\Common\DDSTextureLoader.cpp" />
     <ClCompile Include="src\Common\GameTimer.cpp" />
@@ -149,6 +150,7 @@
     <ClCompile Include="src\WinMain.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\App.h" />
     <ClInclude Include="src\Common\D3DApp.h" />
     <ClInclude Include="src\Common\d3dUtil.h" />
     <ClInclude Include="src\Common\d3dx12.h" />
