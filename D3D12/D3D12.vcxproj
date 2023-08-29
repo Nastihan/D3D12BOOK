@@ -143,14 +143,18 @@
   <ItemGroup>
     <ClCompile Include="SRC\COMMON\D3DAPP.CPP" />
     <ClCompile Include="src\Common\d3dUtil.cpp" />
+    <ClCompile Include="src\Common\DDSTextureLoader.cpp" />
     <ClCompile Include="src\Common\GameTimer.cpp" />
+    <ClCompile Include="src\Common\MathHelper.cpp" />
     <ClCompile Include="src\WinMain.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Common\D3DApp.h" />
     <ClInclude Include="src\Common\d3dUtil.h" />
     <ClInclude Include="src\Common\d3dx12.h" />
+    <ClInclude Include="src\Common\DDSTextureLoader.h" />
     <ClInclude Include="src\Common\GameTimer.h" />
+    <ClInclude Include="src\Common\MathHelper.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

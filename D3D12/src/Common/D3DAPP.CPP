@@ -97,6 +97,8 @@ int D3DApp::Run()
 
 	}
 
+	return (int)msg.wParam;
+
 }
 
 bool D3DApp::Initialize()

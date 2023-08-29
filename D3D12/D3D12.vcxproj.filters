@@ -30,6 +30,12 @@
     <ClCompile Include="src\Common\GameTimer.cpp">
       <Filter>Common</Filter>
     </ClCompile>
+    <ClCompile Include="src\Common\MathHelper.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Common\DDSTextureLoader.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Common\GameTimer.h">
@@ -42,6 +48,12 @@
       <Filter>Common</Filter>
     </ClInclude>
     <ClInclude Include="src\Common\D3DApp.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Common\DDSTextureLoader.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Common\MathHelper.h">
       <Filter>Common</Filter>
     </ClInclude>
   </ItemGroup>
