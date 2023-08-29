@@ -341,9 +341,144 @@ void D3DApp::OnResize()
 	dsvDesc.Texture2D.MipSlice = 0;
 	pDevice->CreateDepthStencilView(pDepthStencilBuffer.Get(), &dsvDesc, DepthStencilView());
 
+	pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
+		pDepthStencilBuffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE
+	));
 
+	// execute commands
+	ThrowIfFailed(pCommandList->Close());
+	ID3D12CommandList* cmdsLists[] = { pCommandList.Get() };
+	pCommandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
 
+	// wait untill completion
+	FlushCommandQueue();
+
+	// Update the viewport transform to cover the client area.
+	screenViewport.TopLeftX = 0;
+	screenViewport.TopLeftY = 0;
+	screenViewport.Width = static_cast<float>(clientWidth);
+	screenViewport.Height = static_cast<float>(clientHeight);
+	screenViewport.MinDepth = 0.0f;
+	screenViewport.MaxDepth = 1.0f;
+
+	scissorRect = { 0, 0, clientWidth, clientHeight };
 }
 
+bool D3DApp::InitMainWindow()
+{
+	WNDCLASS wc;
+	wc.style = CS_E_SCHEMA_MISMATCH | CS_VREDRAW;
+	wc.lpfnWndProc = MainWndProc;
+	wc.cbClsExtra = 0;
+	wc.cbWndExtra = 0;
+	wc.hInstance = appHInst;
+	wc.hIcon = LoadIcon(0, IDI_APPLICATION);
+	wc.hCursor = LoadCursor(0, IDC_ARROW);
+	wc.hbrBackground = (HBRUSH)GetStockObject(NULL_BRUSH);
+	wc.lpszMenuName = 0;
+	wc.lpszClassName = L"MainWnd";
+
+	if (!RegisterClass(&wc))
+	{
+		MessageBox(0, L"RegisterClass Failed.", 0, 0);
+		return false;
+	}
+
+	// compute window rectangle
+	RECT r = { 0, 0, clientWidth, clientHeight };
+	AdjustWindowRect(&r, WS_OVERLAPPEDWINDOW, false);
+	int width = r.right - r.left;
+	int height = r.bottom - r.top;
+
+	mainHWnd = CreateWindow(L"MainWnd", mainWndCaption.c_str(),
+		WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, width, height, 0, 0, appHInst, 0);
+	if (!mainHWnd)
+	{
+		MessageBox(0, L"CreateWindow Failed", 0, 0);
+		return false;
+	}
+	ShowWindow(mainHWnd, SW_SHOW);
+	UpdateWindow(mainHWnd);
+	
+	return true;
+}
+
+bool D3DApp::InitDirect3D()
+{
+#if defined(DEBUG) || defined(_DEBUG)
+{	// d3d12 debug layer
+	ComPtr<ID3D12Debug> debugController;
+	ThrowIfFailed(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)));
+	debugController->EnableDebugLayer();
+}
+#endif
+	
+	ThrowIfFailed(CreateDXGIFactory1(IID_PPV_ARGS(&pDxgiFactory)));
+
+	// hardware device
+	HRESULT hardWareResult = D3D12CreateDevice(
+		nullptr,
+		D3D_FEATURE_LEVEL_12_2,
+		IID_PPV_ARGS(&pDevice)
+	);
+
+	pDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&pFence));
+
+	rtvDescriptorSize = pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	dsvDescriptorSize = pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+	cbvSrvUavDescriptorSize = pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 
+	// Check 4X MSAA quality support for our back buffer format.
+	// All Direct3D 11 capable devices support 4X MSAA for all render 
+	// target formats, so we only need to check quality support.
+
+	D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS msQualityLevels;
+	msQualityLevels.Format = backBufferFormat;
+	msQualityLevels.SampleCount = 4;
+	msQualityLevels.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
+	msQualityLevels.NumQualityLevels = 0;
+	ThrowIfFailed(pDevice->CheckFeatureSupport(
+		D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
+		&msQualityLevels,
+		sizeof(msQualityLevels)));
+
+	m4xMsaaQuality = msQualityLevels.NumQualityLevels;
+	assert(m4xMsaaQuality > 0 && "Unexpected MSAA quality level.");
+
+#ifdef _DEBUG
+	LogAdapters();
+#endif
+
+	CreateCommandObjects();
+	CreateSwapChain();
+	CreateRtvAndDsvDescriptorHeaps();
+
+	return true;
+}
+
+void D3DApp::CreateCommandObjects()
+{
+
+	D3D12_COMMAND_QUEUE_DESC queueDesc = {};
+	queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+	queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+	ThrowIfFailed(pDevice->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&pCommandQueue)));
+
+	ThrowIfFailed(pDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&pCmdListAlloc)));
+
+	ThrowIfFailed(pDevice->CreateCommandList(
+		0, D3D12_COMMAND_LIST_TYPE_DIRECT, pCmdListAlloc.Get(),
+		nullptr, IID_PPV_ARGS(&pCommandList)
+	));
+
+	pCommandList->Close();
+}
+
+void D3DApp::CreateSwapChain()
+{
+}
+
+void D3DApp::FlushCommandQueue()
+{
+}
