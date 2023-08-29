@@ -141,6 +141,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\BoxApp.cpp" />
     <ClCompile Include="src\FirstApp.cpp" />
     <ClCompile Include="SRC\COMMON\D3DApp.CPP" />
     <ClCompile Include="src\Common\d3dUtil.cpp" />
@@ -150,6 +151,7 @@
     <ClCompile Include="src\WinMain.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\BoxApp.h" />
     <ClInclude Include="src\FirstApp.h" />
     <ClInclude Include="src\Common\D3DApp.h" />
     <ClInclude Include="src\Common\d3dUtil.h" />

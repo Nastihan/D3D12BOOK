@@ -1,5 +1,5 @@
 #include <Windows.h>
-#include "FirstApp.h"
+#include "BoxApp.h"
 
 int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -9,7 +9,7 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
 	try
 	{
-		FirstApp app(hInstance);
+		BoxApp app(hInstance);
 		if (!app.Initialize())
 		{
 			return 0;

@@ -47,6 +47,9 @@
     <ClCompile Include="SRC\COMMON\D3DApp.CPP">
       <Filter>Source Files\Apps</Filter>
     </ClCompile>
+    <ClCompile Include="src\BoxApp.cpp">
+      <Filter>Source Files\Apps</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Common\GameTimer.h">
@@ -71,6 +74,9 @@
       <Filter>Header Files\Apps</Filter>
     </ClInclude>
     <ClInclude Include="src\Common\D3DApp.h">
+      <Filter>Header Files\Apps</Filter>
+    </ClInclude>
+    <ClInclude Include="src\BoxApp.h">
       <Filter>Header Files\Apps</Filter>
     </ClInclude>
   </ItemGroup>
