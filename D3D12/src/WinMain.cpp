@@ -8,6 +8,8 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
 	try
 	{
+		while (true);
+		return 0;
 		//D3DApp app(hInstance);
 	}
 	catch (DxException& e)

@@ -76,7 +76,7 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12Device> pDevice;
 
 	Microsoft::WRL::ComPtr<ID3D12Fence> pFence;
-	UINT64 mCurrentFence = 0;
+	UINT64 currentFence = 0;
 
 	Microsoft::WRL::ComPtr<ID3D12CommandQueue> pCommandQueue;
 	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> pCmdListAlloc;
