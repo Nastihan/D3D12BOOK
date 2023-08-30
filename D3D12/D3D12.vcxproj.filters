@@ -80,4 +80,8 @@
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Shaders\ShaderFiles\ColorVS.hlsl" />
+    <FxCompile Include="Shaders\ShaderFiles\ColorPS.hlsl" />
+  </ItemGroup>
 </Project>

@@ -16,6 +16,24 @@ bool BoxApp::Initialize()
         return false;
     }
 
+    // Reset the command list to prep for initialization commands.
+    ThrowIfFailed(pCommandList->Reset(pCmdListAlloc.Get(), nullptr));
+
+    BuildDescriptorHeaps();
+    BuildConstantBuffers();
+    BuildRootSignature();
+    BuildShadersAndInputLayout();
+    BuildBoxGeometry();
+    BuildPSO();
+
+    // Execute the initialization commands.
+    ThrowIfFailed(pCommandList->Close());
+    ID3D12CommandList* cmdsLists[] = { pCommandList.Get() };
+    pCommandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
+
+    // Wait until initialization is complete.
+    FlushCommandQueue();
+
     return true;
 }
 
@@ -133,8 +151,8 @@ void BoxApp::BuildRootSignature()
 
 void BoxApp::BuildShadersAndInputLayout()
 {
-    ThrowIfFailed(D3DReadFileToBlob(L"Shaders\\ColorVS.hlsl", pVSBlob.GetAddressOf()));
-    ThrowIfFailed(D3DReadFileToBlob(L"Shaders\\ColorPS.hlsl", pPSBlob.GetAddressOf()));
+    ThrowIfFailed(D3DReadFileToBlob(L"Shaders\\ShaderBins\\ColorVS.cso", pVSBlob.GetAddressOf()));
+    ThrowIfFailed(D3DReadFileToBlob(L"Shaders\\ShaderBins\\ColorPS.cso", pPSBlob.GetAddressOf()));
 
     inputLayout =
     {
@@ -221,4 +239,11 @@ void BoxApp::BuildPSO()
     ZeroMemory(&psoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
     psoDesc.InputLayout = { inputLayout.data(), (UINT)inputLayout.size() };
     psoDesc.VS = CD3DX12_SHADER_BYTECODE(pVSBlob.Get());
+    psoDesc.PS = CD3DX12_SHADER_BYTECODE(pPSBlob.Get());
+    psoDesc.pRootSignature = pRootSignature.Get();
+    psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+
+    ThrowIfFailed(pDevice->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pPSO)));
+
 }
