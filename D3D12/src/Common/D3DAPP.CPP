@@ -409,9 +409,10 @@ bool D3DApp::InitDirect3D()
 {
 #if defined(DEBUG) || defined(_DEBUG)
 {	// d3d12 debug layer
-	ComPtr<ID3D12Debug> debugController;
+	ComPtr<ID3D12Debug1> debugController;
 	ThrowIfFailed(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)));
 	debugController->EnableDebugLayer();
+	debugController->SetEnableGPUBasedValidation(true);
 }
 #endif
 	

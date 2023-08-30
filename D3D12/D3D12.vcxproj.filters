@@ -81,7 +81,11 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Shaders\ShaderFiles\ColorVS.hlsl" />
-    <FxCompile Include="Shaders\ShaderFiles\ColorPS.hlsl" />
+    <FxCompile Include="Shaders\ShaderFiles\ColorPS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ShaderFiles\ColorVS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>
