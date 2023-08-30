@@ -23,7 +23,7 @@ public:
 			IID_PPV_ARGS(&pUploadBuffer)
 		));
 
-		ThrowIfFailed(pUploadBuffer->Map(0, nullptr, reinterpret_cast<void**> (mappedData)));
+		ThrowIfFailed(pUploadBuffer->Map(0, nullptr, reinterpret_cast<void**> (&mappedData)));
 		// We do not need to unmap until we are done with the resource.  However, we must not write to
 		// the resource while it is in use by the GPU (so we must use synchronization techniques).
 	}
@@ -43,7 +43,7 @@ public:
 	}
 	void CopyData(int elementIndex, const T& data)
 	{
-		memccpy(&mappedData[elementIndex * elementByteSize], &data, sizeof(T));
+		memcpy(&mappedData[elementIndex * elementByteSize], &data, sizeof(T));
 	}
 
 private:

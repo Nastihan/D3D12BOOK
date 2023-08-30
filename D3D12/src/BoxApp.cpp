@@ -40,10 +40,35 @@ bool BoxApp::Initialize()
 void BoxApp::OnResize()
 {
     D3DApp::OnResize();
+
+    DirectX::XMMATRIX P = DirectX::XMMatrixPerspectiveFovLH(0.25f * MathHelper::Pi, GetAR(), 1.0f, 1000.0f);
+    DirectX::XMStoreFloat4x4(&mProj, P);
 }
 
 void BoxApp::Update(const GameTimer& gt)
 {
+    using namespace DirectX;
+    // Convert Spherical to Cartesian coordinates.
+    float x = mRadius * sinf(mPhi) * cosf(mTheta);
+    float z = mRadius * sinf(mPhi) * sinf(mTheta);
+    float y = mRadius * cosf(mPhi);
+
+    // Build the view matrix.
+    XMVECTOR pos = XMVectorSet(x, y, z, 1.0f);
+    XMVECTOR target = XMVectorZero();
+    XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+
+    XMMATRIX view = XMMatrixLookAtLH(pos, target, up);
+    XMStoreFloat4x4(&mView, view);
+
+    XMMATRIX world = XMLoadFloat4x4(&mWorld);
+    XMMATRIX proj = XMLoadFloat4x4(&mProj);
+    XMMATRIX worldViewProj = world * view * proj;
+
+    // Update the constant buffer with the latest worldViewProj matrix.
+    ObjectConstants objConstants;
+    XMStoreFloat4x4(&objConstants.MVP, XMMatrixTranspose(worldViewProj));
+    pObjectCB->CopyData(0, objConstants);
 }
 
 void BoxApp::Draw(const GameTimer& gt)
@@ -51,12 +76,12 @@ void BoxApp::Draw(const GameTimer& gt)
     ThrowIfFailed(pCmdListAlloc->Reset());
     ThrowIfFailed(pCommandList->Reset(pCmdListAlloc.Get(), nullptr));
 
+    pCommandList->RSSetViewports(1, &screenViewport);
+    pCommandList->RSSetScissorRects(1, &scissorRect);
+
     pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
         CurrentBackBuffer(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET
     ));
-
-    pCommandList->RSSetViewports(1, &screenViewport);
-    pCommandList->RSSetScissorRects(1, &scissorRect);
 
     pCommandList->ClearRenderTargetView(
         CurrentBackBufferView(), DirectX::Colors::DimGray, 0, nullptr);
@@ -65,6 +90,16 @@ void BoxApp::Draw(const GameTimer& gt)
 
     pCommandList->OMSetRenderTargets(
         1, &CurrentBackBufferView(), true, &DepthStencilView());
+
+    ID3D12DescriptorHeap* descriptorHeaps[] = { pCbvHeap.Get() };
+    pCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+    pCommandList->SetGraphicsRootSignature(pRootSignature.Get());
+    pCommandList->SetGraphicsRootDescriptorTable(0, pCbvHeap->GetGPUDescriptorHandleForHeapStart());
+    pCommandList->IASetIndexBuffer(&pBoxGeo->IndexBufferView());
+    pCommandList->IASetVertexBuffers(0, 1, &pBoxGeo->VertexBufferView());
+    pCommandList->SetPipelineState(pPSO.Get());
+    pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    pCommandList->DrawIndexedInstanced(pBoxGeo->DrawArgs["box"].IndexCount, 1, 0, 0, 0);
 
     pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
         CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT
@@ -242,7 +277,15 @@ void BoxApp::BuildPSO()
     psoDesc.PS = CD3DX12_SHADER_BYTECODE(pPSBlob.Get());
     psoDesc.pRootSignature = pRootSignature.Get();
     psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+    psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
     psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    psoDesc.NumRenderTargets = 1;
+    psoDesc.RTVFormats[0] = backBufferFormat;
+    psoDesc.SampleDesc.Count = m4xMsaaState ? 4 : 1;
+    psoDesc.SampleDesc.Quality = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
+    psoDesc.SampleMask = UINT_MAX;
+    psoDesc.DSVFormat = depthStencilFormat;
 
     ThrowIfFailed(pDevice->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pPSO)));
 
