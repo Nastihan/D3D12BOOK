@@ -2,6 +2,12 @@
 #include "Common/D3DApp.h"
 #include "UploadBuffer.h"
 
+struct Vertex
+{
+	DirectX::XMFLOAT3 pos;
+	DirectX::XMFLOAT4 color;
+};
+
 struct ObjectConstants
 {
 	DirectX::XMFLOAT4X4 MVP = MathHelper::Identity4x4();
@@ -36,6 +42,8 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> pCbvHeap = nullptr;
 
 	std::unique_ptr<UploadBuffer<ObjectConstants>> pObjectCB = nullptr;
+
+	std::unique_ptr<MeshGeometry> pBoxGeo = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3DBlob> pVSBlob = nullptr;
 	Microsoft::WRL::ComPtr<ID3DBlob> pPSBlob = nullptr;

@@ -133,12 +133,92 @@ void BoxApp::BuildRootSignature()
 
 void BoxApp::BuildShadersAndInputLayout()
 {
+    ThrowIfFailed(D3DReadFileToBlob(L"Shaders\\ColorVS.hlsl", pVSBlob.GetAddressOf()));
+    ThrowIfFailed(D3DReadFileToBlob(L"Shaders\\ColorPS.hlsl", pPSBlob.GetAddressOf()));
+
+    inputLayout =
+    {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+    };
 }
 
 void BoxApp::BuildBoxGeometry()
 {
+    std::array<Vertex, 8> vertices =
+    {
+        Vertex({ DirectX::XMFLOAT3(-1.0f, -1.0f, -1.0f), DirectX::XMFLOAT4(DirectX::Colors::White) }),
+        Vertex({ DirectX::XMFLOAT3(-1.0f, +1.0f, -1.0f), DirectX::XMFLOAT4(DirectX::Colors::Black) }),
+        Vertex({ DirectX::XMFLOAT3(+1.0f, +1.0f, -1.0f), DirectX::XMFLOAT4(DirectX::Colors::Red) }),
+        Vertex({ DirectX::XMFLOAT3(+1.0f, -1.0f, -1.0f), DirectX::XMFLOAT4(DirectX::Colors::Green) }),
+        Vertex({ DirectX::XMFLOAT3(-1.0f, -1.0f, +1.0f), DirectX::XMFLOAT4(DirectX::Colors::Blue) }),
+        Vertex({ DirectX::XMFLOAT3(-1.0f, +1.0f, +1.0f), DirectX::XMFLOAT4(DirectX::Colors::Yellow) }),
+        Vertex({ DirectX::XMFLOAT3(+1.0f, +1.0f, +1.0f), DirectX::XMFLOAT4(DirectX::Colors::Cyan) }),
+        Vertex({ DirectX::XMFLOAT3(+1.0f, -1.0f, +1.0f), DirectX::XMFLOAT4(DirectX::Colors::Magenta) })
+    };
+
+    std::array<std::uint16_t, 36> indices =
+    {
+        // front face
+        0, 1, 2,
+        0, 2, 3,
+
+        // back face
+        4, 6, 5,
+        4, 7, 6,
+
+        // left face
+        4, 5, 1,
+        4, 1, 0,
+
+        // right face
+        3, 2, 6,
+        3, 6, 7,
+
+        // top face
+        1, 5, 6,
+        1, 6, 2,
+
+        // bottom face
+        4, 0, 3,
+        4, 3, 7
+    };
+
+    const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
+    const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
+
+    pBoxGeo = std::make_unique<MeshGeometry>();
+    pBoxGeo->Name = "boxGeo";
+
+    ThrowIfFailed(D3DCreateBlob(vbByteSize, &pBoxGeo->VertexBufferCPU));
+    CopyMemory(pBoxGeo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
+
+    ThrowIfFailed(D3DCreateBlob(ibByteSize, &pBoxGeo->IndexBufferCPU));
+    CopyMemory(pBoxGeo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
+
+    pBoxGeo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(pDevice.Get(),
+        pCommandList.Get(), vertices.data(), vbByteSize, pBoxGeo->VertexBufferUploader);
+
+    pBoxGeo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(pDevice.Get(),
+        pCommandList.Get(), indices.data(), ibByteSize, pBoxGeo->IndexBufferUploader);
+
+    pBoxGeo->VertexByteStride = sizeof(Vertex);
+    pBoxGeo->VertexBufferByteSize = vbByteSize;
+    pBoxGeo->IndexFormat = DXGI_FORMAT_R16_UINT;
+    pBoxGeo->IndexBufferByteSize = ibByteSize;
+
+    SubmeshGeometry submesh;
+    submesh.IndexCount = (UINT)indices.size();
+    submesh.StartIndexLocation = 0;
+    submesh.BaseVertexLocation = 0;
+
+    pBoxGeo->DrawArgs["box"] = submesh;
 }
 
 void BoxApp::BuildPSO()
 {
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
+    ZeroMemory(&psoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
+    psoDesc.InputLayout = { inputLayout.data(), (UINT)inputLayout.size() };
+    psoDesc.VS = CD3DX12_SHADER_BYTECODE(pVSBlob.Get());
 }

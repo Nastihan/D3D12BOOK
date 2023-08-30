@@ -55,9 +55,6 @@
     <ClInclude Include="src\Common\GameTimer.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="src\Common\d3dx12.h">
-      <Filter>Common</Filter>
-    </ClInclude>
     <ClInclude Include="src\Common\d3dUtil.h">
       <Filter>Common</Filter>
     </ClInclude>
@@ -78,6 +75,9 @@
     </ClInclude>
     <ClInclude Include="src\UploadBuffer.h">
       <Filter>Header Files\Bindable</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Common\d3dx12.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -152,10 +152,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\BoxApp.h" />
+    <ClInclude Include="src\Common\d3dx12.h" />
     <ClInclude Include="src\FirstApp.h" />
     <ClInclude Include="src\Common\D3DApp.h" />
     <ClInclude Include="src\Common\d3dUtil.h" />
-    <ClInclude Include="src\Common\d3dx12.h" />
     <ClInclude Include="src\Common\DDSTextureLoader.h" />
     <ClInclude Include="src\Common\GameTimer.h" />
     <ClInclude Include="src\Common\MathHelper.h" />
