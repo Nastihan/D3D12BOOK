@@ -15,6 +15,8 @@ bool BoxApp::Initialize()
     {
         return false;
     }
+
+    return true;
 }
 
 void BoxApp::OnResize()
@@ -111,7 +113,7 @@ void BoxApp::BuildRootSignature()
     CD3DX12_DESCRIPTOR_RANGE cbvTable(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0U);
     rootParams[0].InitAsDescriptorTable(1, &cbvTable);
 
-    CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(std::size(rootParams), rootParams,
+    CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc((UINT)std::size(rootParams), rootParams,
         0U, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
     Microsoft::WRL::ComPtr<ID3DBlob> rootSigBlob = nullptr;
