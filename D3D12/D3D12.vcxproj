@@ -148,9 +148,11 @@
     <ClCompile Include="src\Common\DDSTextureLoader.cpp" />
     <ClCompile Include="src\Common\GameTimer.cpp" />
     <ClCompile Include="src\Common\MathHelper.cpp" />
+    <ClCompile Include="src\FrameResource.cpp" />
     <ClCompile Include="src\WinMain.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\FrameResource.h" />
     <ClInclude Include="src\BoxApp.h" />
     <ClInclude Include="src\Common\d3dx12.h" />
     <ClInclude Include="src\FirstApp.h" />

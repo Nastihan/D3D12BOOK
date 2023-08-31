@@ -1,6 +1,6 @@
 cbuffer cbPerObject : register(b0)
 {
-    float4x4 gWorldViewProj;
+    float4x4 MVP;
 };
 
 struct VS_Input
@@ -20,7 +20,7 @@ VS_Output main(VS_Input input)
     VS_Output vout;
 	
 	// Transform to homogeneous clip space.
-    vout.PosH = mul(float4(input.PosL, 1.0f), gWorldViewProj);
+    vout.PosH = mul(float4(input.PosL, 1.0f), MVP);
 	
 	// Just pass vertex color into the pixel shader.
     vout.Color = input.Color;

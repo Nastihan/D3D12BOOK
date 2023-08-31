@@ -50,6 +50,9 @@
     <ClCompile Include="src\BoxApp.cpp">
       <Filter>Source Files\Apps</Filter>
     </ClCompile>
+    <ClCompile Include="src\FrameResource.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Common\GameTimer.h">
@@ -77,6 +80,9 @@
       <Filter>Header Files\Bindable</Filter>
     </ClInclude>
     <ClInclude Include="src\Common\d3dx12.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\FrameResource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
