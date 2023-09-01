@@ -206,20 +206,104 @@ void ShapesApp::UpdateObjectCBs(const GameTimer& gf)
 
 void ShapesApp::UpdateMainPassCB(const GameTimer& gt)
 {
+    DirectX::XMMATRIX view = XMLoadFloat4x4(&this->view);
+    DirectX::XMMATRIX proj = XMLoadFloat4x4(&this->proj);
+
+    DirectX::XMMATRIX viewProj = XMMatrixMultiply(view, proj);
+    DirectX::XMMATRIX invView = XMMatrixInverse(&XMMatrixDeterminant(view), view);
+    DirectX::XMMATRIX invProj = XMMatrixInverse(&XMMatrixDeterminant(proj), proj);
+    DirectX::XMMATRIX invViewProj = XMMatrixInverse(&XMMatrixDeterminant(viewProj), viewProj);
+
+    DirectX::XMStoreFloat4x4(&mainPassCB.View, XMMatrixTranspose(view));
+    DirectX::XMStoreFloat4x4(&mainPassCB.InvView, XMMatrixTranspose(invView));
+    DirectX::XMStoreFloat4x4(&mainPassCB.Proj, XMMatrixTranspose(proj));
+    DirectX::XMStoreFloat4x4(&mainPassCB.InvProj, XMMatrixTranspose(invProj));
+    DirectX::XMStoreFloat4x4(&mainPassCB.ViewProj, XMMatrixTranspose(viewProj));
+    DirectX::XMStoreFloat4x4(&mainPassCB.InvViewProj, XMMatrixTranspose(invViewProj));
+    mainPassCB.EyePosW = eyePos;
+    mainPassCB.RenderTargetSize = DirectX::XMFLOAT2((float)clientWidth, (float)clientHeight);
+    mainPassCB.InvRenderTargetSize = DirectX::XMFLOAT2(1.0f / clientWidth, 1.0f / clientHeight);
+    mainPassCB.NearZ = 1.0f;
+    mainPassCB.FarZ = 1000.0f;
+    mainPassCB.TotalTime = gt.TotalTime();
+    mainPassCB.DeltaTime = gt.DeltaTime();
+
+    auto currPassCB = currFrameResource->PassCB.get();
+    currPassCB->CopyData(0, mainPassCB);
 }
 
 void ShapesApp::BuildDescriptorHeaps()
 {
-    D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc{};
+    UINT objCount = (UINT)opaqueRItems.size();
+
+    // Need a CBV descriptor for each object for each frame resource,
+    // +1 for the perPass CBV for each frame resource.
+    UINT numDescriptors = (objCount + 1) * gNumFrameResources;
+
+    // Save an offset to the start of the pass CBVs.  These are the last 3 descriptors.
+    passCbvOffset = objCount * gNumFrameResources;
+
+    D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc;
+    cbvHeapDesc.NumDescriptors = numDescriptors;
     cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-    cbvHeapDesc.NodeMask = 0;
-    cbvHeapDesc.NumDescriptors = 1;
     cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-    ThrowIfFailed(pDevice->CreateDescriptorHeap(&cbvHeapDesc, IID_PPV_ARGS(&pCbvHeap)));
+    cbvHeapDesc.NodeMask = 0;
+    ThrowIfFailed(pDevice->CreateDescriptorHeap(&cbvHeapDesc,
+        IID_PPV_ARGS(&pCbvHeap)));
 }
 
 void ShapesApp::BuildConstantBufferViews()
 {
+    UINT objCbByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
+    UINT objCount = (UINT)opaqueRItems.size();
+
+    for (int frameIndex = 0; frameIndex < gNumFrameResources; frameIndex++)
+    {
+        auto objectCB = frameResources[frameIndex]->ObjectCB->Resource();
+        for (int i = 0; i < objCount; i++)
+        {
+            D3D12_GPU_VIRTUAL_ADDRESS cbAddress = objectCB->GetGPUVirtualAddress();
+
+            cbAddress += i * objCbByteSize;
+
+            int heapIndex = frameIndex*objCount + i;
+            auto handle = CD3DX12_CPU_DESCRIPTOR_HANDLE(
+                pCbvHeap->GetCPUDescriptorHandleForHeapStart(),
+                heapIndex,
+                cbvSrvUavDescriptorSize
+            );
+
+            D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{};
+            cbvDesc.SizeInBytes = objCbByteSize;
+            cbvDesc.BufferLocation = cbAddress;
+
+            pDevice->CreateConstantBufferView(&cbvDesc, handle);
+        }
+    }
+
+    UINT passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
+
+    for (int frameIndex = 0; frameIndex < gNumFrameResources; frameIndex++)
+    {
+        auto passCb = frameResources[frameIndex]->PassCB->Resource();
+        D3D12_GPU_VIRTUAL_ADDRESS cbAddress = passCb->GetGPUVirtualAddress();
+
+        // offset to the pass cbv in the descriptor heap
+        auto heapIndex = passCbvOffset + frameIndex;
+        auto handle = CD3DX12_CPU_DESCRIPTOR_HANDLE(
+            pCbvHeap->GetCPUDescriptorHandleForHeapStart(),
+            heapIndex,
+            cbvSrvUavDescriptorSize
+        );
+
+        D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{};
+        cbvDesc.BufferLocation = cbAddress;
+        cbvDesc.SizeInBytes = passCBByteSize;
+
+        pDevice->CreateConstantBufferView(
+            &cbvDesc, handle
+        );
+    }
 }
 
 
