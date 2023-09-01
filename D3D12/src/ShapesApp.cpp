@@ -310,9 +310,11 @@ void ShapesApp::BuildConstantBufferViews()
 void ShapesApp::BuildRootSignature()
 {
     // only one root parameter needed for the mvp matrix
-    CD3DX12_ROOT_PARAMETER rootParams[1]{};
-    CD3DX12_DESCRIPTOR_RANGE cbvTable(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0U);
-    rootParams[0].InitAsDescriptorTable(1, &cbvTable);
+    CD3DX12_ROOT_PARAMETER rootParams[2]{};
+    CD3DX12_DESCRIPTOR_RANGE cbvTable0(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0U);
+    rootParams[0].InitAsDescriptorTable(1, &cbvTable0);
+    CD3DX12_DESCRIPTOR_RANGE cbvTable1(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1U);
+    rootParams[1].InitAsDescriptorTable(1, &cbvTable1);
 
     CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc((UINT)std::size(rootParams), rootParams,
         0U, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
