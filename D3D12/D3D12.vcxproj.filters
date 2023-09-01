@@ -53,6 +53,9 @@
     <ClCompile Include="src\FrameResource.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\ShapesApp.cpp">
+      <Filter>Source Files\Apps</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Common\GameTimer.h">
@@ -84,6 +87,9 @@
     </ClInclude>
     <ClInclude Include="src\FrameResource.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ShapesApp.h">
+      <Filter>Header Files\Apps</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
