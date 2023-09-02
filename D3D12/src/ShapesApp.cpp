@@ -336,8 +336,9 @@ void ShapesApp::BuildRootSignature()
 
 void ShapesApp::BuildShadersAndInputLayout()
 {
-    ThrowIfFailed(D3DReadFileToBlob(L"Shaders\\ShaderBins\\ColorVS.cso", pVSBlob.GetAddressOf()));
-    ThrowIfFailed(D3DReadFileToBlob(L"Shaders\\ShaderBins\\ColorPS.cso", pPSBlob.GetAddressOf()));
+    ThrowIfFailed(D3DReadFileToBlob(L"Shaders\\ShaderBins\\standardVS.cso", shaders["standardVS"].GetAddressOf()));
+    ThrowIfFailed(D3DReadFileToBlob(L"Shaders\\ShaderBins\\opaquePS.cso", shaders["opaquePS"].GetAddressOf()));
+
 
     inputLayout =
     {
