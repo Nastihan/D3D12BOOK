@@ -511,7 +511,7 @@ void ShapesApp::BuildFrameResources()
 {
     for (int i = 0; i < gNumFrameResources; i++)
     {
-        frameResources[i] = std::make_unique<FrameResource>(pDevice.Get(), 1, (UINT)allRItems.size());
+        frameResources.push_back(std::make_unique<FrameResource>(pDevice.Get(), 1, (UINT)allRItems.size()));
     }
 }
 
