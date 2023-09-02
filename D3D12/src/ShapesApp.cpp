@@ -1,6 +1,8 @@
 #include "ShapesApp.h"
 #include "Common/GeometryGenerator.h"
 
+const int gNumFrameResources = 3;
+
 ShapesApp::ShapesApp(HINSTANCE hInstance)
     :D3DApp(hInstance)
 {

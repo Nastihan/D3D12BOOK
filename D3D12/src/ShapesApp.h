@@ -5,7 +5,6 @@
 
 
 
-const int gNumFrameResources = 3;
 
 struct RenderItem
 {
