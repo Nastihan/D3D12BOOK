@@ -13,17 +13,17 @@ struct RenderItem
 
 	DirectX::XMFLOAT4X4 World = MathHelper::Identity4x4();
 
-	int numFramesDirty = gNumFrameResources;
+	int NumFramesDirty = gNumFrameResources;
 
-	UINT objCBIndex = -1;
+	UINT ObjCBIndex = -1;
 
-	MeshGeometry* geo = nullptr;
+	MeshGeometry* Geo = nullptr;
 
-	D3D12_PRIMITIVE_TOPOLOGY primitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	D3D12_PRIMITIVE_TOPOLOGY PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
-	UINT indexCount = 0;
-	UINT startIndexLocation = 0;
-	int baseVertexLocation = 0;
+	UINT IndexCount = 0;
+	UINT StartIndexLocation = 0;
+	int BaseVertexLocation = 0;
 
 };
 
@@ -59,7 +59,7 @@ private:
 	void BuildPSOs();
 	void BuildFrameResources();
 	void BuildRenderItems();
-	void DrawRendeItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem>& rItems);
+	void DrawRendeItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& rItems);
 private:
 	std::vector<std::unique_ptr<FrameResource>> frameResources;
 	FrameResource* currFrameResource = nullptr;
