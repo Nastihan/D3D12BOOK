@@ -258,7 +258,7 @@ void ShapesApp::BuildConstantBufferViews()
     for (int frameIndex = 0; frameIndex < gNumFrameResources; frameIndex++)
     {
         auto objectCB = frameResources[frameIndex]->ObjectCB->Resource();
-        for (int i = 0; i < objCount; i++)
+        for (UINT i = 0; i < objCount; i++)
         {
             D3D12_GPU_VIRTUAL_ADDRESS cbAddress = objectCB->GetGPUVirtualAddress();
 
@@ -509,7 +509,7 @@ void ShapesApp::BuildFrameResources()
 {
     for (int i = 0; i < gNumFrameResources; i++)
     {
-        frameResources[i] = std::make_unique<FrameResource>(pDevice.Get(), 1, allRItems.size());
+        frameResources[i] = std::make_unique<FrameResource>(pDevice.Get(), 1, (UINT)allRItems.size());
     }
 }
 
