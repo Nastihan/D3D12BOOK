@@ -12,9 +12,6 @@
     <Filter Include="Common">
       <UniqueIdentifier>{2aa2734f-8ca8-474f-b71d-ec8d1d65b5ef}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Shaders">
-      <UniqueIdentifier>{98dce88c-9503-4602-b088-702932874466}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files\Bindable">
       <UniqueIdentifier>{aa3a11fb-8fc8-4320-99bf-459cb8258052}</UniqueIdentifier>
     </Filter>
@@ -23,6 +20,9 @@
     </Filter>
     <Filter Include="Source Files\Apps">
       <UniqueIdentifier>{66047fa7-40f9-43e5-948e-23e11c0b6d34}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Common\Shaders">
+      <UniqueIdentifier>{98dce88c-9503-4602-b088-702932874466}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -55,6 +55,9 @@
     </ClCompile>
     <ClCompile Include="src\ShapesApp.cpp">
       <Filter>Source Files\Apps</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Common\GeometryGenerator.cpp">
+      <Filter>Common</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -91,19 +94,22 @@
     <ClInclude Include="src\ShapesApp.h">
       <Filter>Header Files\Apps</Filter>
     </ClInclude>
+    <ClInclude Include="src\Common\GeometryGenerator.h">
+      <Filter>Common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\ShaderFiles\ColorPS.hlsl">
-      <Filter>Shaders</Filter>
+      <Filter>Common\Shaders</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ShaderFiles\ColorVS.hlsl">
-      <Filter>Shaders</Filter>
+      <Filter>Common\Shaders</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ShaderFiles\standardVS.hlsl">
-      <Filter>Shaders</Filter>
+      <Filter>Common\Shaders</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ShaderFiles\opaquePS.hlsl">
-      <Filter>Shaders</Filter>
+      <Filter>Common\Shaders</Filter>
     </FxCompile>
   </ItemGroup>
 </Project>

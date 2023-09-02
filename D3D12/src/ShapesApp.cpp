@@ -1,4 +1,5 @@
 #include "ShapesApp.h"
+#include "Common/GeometryGenerator.h"
 
 ShapesApp::ShapesApp(HINSTANCE hInstance)
     :D3DApp(hInstance)
@@ -339,7 +340,6 @@ void ShapesApp::BuildShadersAndInputLayout()
     ThrowIfFailed(D3DReadFileToBlob(L"Shaders\\ShaderBins\\standardVS.cso", shaders["standardVS"].GetAddressOf()));
     ThrowIfFailed(D3DReadFileToBlob(L"Shaders\\ShaderBins\\opaquePS.cso", shaders["opaquePS"].GetAddressOf()));
 
-
     inputLayout =
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -349,6 +349,9 @@ void ShapesApp::BuildShadersAndInputLayout()
 
 void ShapesApp::BuildShapeGeometry()
 {
+    using namespace DirectX;
+
+    
 }
 
 void ShapesApp::BuildPSOs()
