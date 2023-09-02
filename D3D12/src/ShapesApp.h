@@ -92,7 +92,7 @@ private:
 
 	float theta = 1.5f * DirectX::XM_PI;
 	float phi = DirectX::XM_PIDIV4;
-	float radius = 5.0f;
+	float radius = 25.0f;
 
 	POINT lastMousePos;
 

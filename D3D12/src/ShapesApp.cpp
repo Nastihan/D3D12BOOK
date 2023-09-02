@@ -83,7 +83,7 @@ void ShapesApp::Draw(const GameTimer& gt)
     ));
 
     pCommandList->ClearRenderTargetView(
-        CurrentBackBufferView(), DirectX::Colors::DimGray, 0, nullptr);
+        CurrentBackBufferView(), DirectX::Colors::AliceBlue, 0, nullptr);
     pCommandList->ClearDepthStencilView(
         DepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
@@ -94,6 +94,9 @@ void ShapesApp::Draw(const GameTimer& gt)
     pCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
     pCommandList->SetGraphicsRootSignature(pRootSignature.Get());
 
+    pCommandList->SetGraphicsRootDescriptorTable(1, CD3DX12_GPU_DESCRIPTOR_HANDLE(
+        pCbvHeap->GetGPUDescriptorHandleForHeapStart(), passCbvOffset, cbvSrvUavDescriptorSize
+    ));
     pCommandList->SetPipelineState(PSOs["opaque"].Get());
     DrawRendeItems(pCommandList.Get(), opaqueRItems);
 
@@ -145,14 +148,14 @@ void ShapesApp::OnMouseMove(WPARAM btnState, int x, int y)
     else if ((btnState & MK_RBUTTON) != 0)
     {
         // Make each pixel correspond to 0.005 unit in the scene.
-        float dx = 0.005f * static_cast<float>(x - lastMousePos.x);
-        float dy = 0.005f * static_cast<float>(y - lastMousePos.y);
+        float dx = 0.05f * static_cast<float>(x - lastMousePos.x);
+        float dy = 0.05f * static_cast<float>(y - lastMousePos.y);
 
         // Update the camera radius based on input.
         radius += dx - dy;
 
         // Restrict the radius.
-        radius = MathHelper::Clamp(radius, 3.0f, 15.0f);
+        radius = MathHelper::Clamp(radius, 5.0f, 150.0f);
     }
 
     lastMousePos.x = x;
