@@ -23,13 +23,13 @@ struct RenderItem
 
 };
 
-class ShapesApp : public D3DApp
+class LandAndWavesApp : public D3DApp
 {
 public:
-	ShapesApp(HINSTANCE hInstance);
-	ShapesApp(ShapesApp& rhs) = delete;
-	ShapesApp& operator=(const ShapesApp& rhs) = delete;
-	~ShapesApp();
+	LandAndWavesApp(HINSTANCE hInstance);
+	LandAndWavesApp(LandAndWavesApp& rhs) = delete;
+	LandAndWavesApp& operator=(const LandAndWavesApp& rhs) = delete;
+	~LandAndWavesApp();
 
 	virtual bool Initialize() override;
 

@@ -142,6 +142,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\Common\GeometryGenerator.cpp" />
+    <ClCompile Include="src\LandAndWavesApp.cpp" />
     <ClCompile Include="src\ShapesApp.cpp" />
     <ClCompile Include="src\BoxApp.cpp" />
     <ClCompile Include="src\FirstApp.cpp" />
@@ -155,6 +156,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Common\GeometryGenerator.h" />
+    <ClInclude Include="src\LandAndWavesApp.h" />
     <ClInclude Include="src\ShapesApp.h" />
     <ClInclude Include="src\FrameResource.h" />
     <ClInclude Include="src\BoxApp.h" />
