@@ -21,13 +21,15 @@ bool LandAndWavesApp::Initialize()
     // Reset the command list to prep for initialization commands.
     ThrowIfFailed(pCommandList->Reset(pCmdListAlloc.Get(), nullptr));
 
+    mWaves = std::make_unique<Waves>(128, 128, 1.0f, 0.03f, 4.0f, 0.2f);
+
     BuildRootSignature();
     BuildShadersAndInputLayout();
-    BuildShapeGeometry();
+    BuildLandGeometry();
+    BuildWavesGeometryBuffers();
+    BuildRenderItems();
     BuildRenderItems();
     BuildFrameResources();
-    BuildDescriptorHeaps();
-    BuildConstantBufferViews();
     BuildPSOs();
 
     // Execute the initialization commands.
@@ -67,13 +69,21 @@ void LandAndWavesApp::Update(const GameTimer& gt)
 
     UpdateObjectCBs(gt);
     UpdateMainPassCB(gt);
+    UpdateWaves(gt);
 }
 
 void LandAndWavesApp::Draw(const GameTimer& gt)
 {
-    ThrowIfFailed(pCmdListAlloc->Reset());
-    ThrowIfFailed(pCommandList->Reset(pCmdListAlloc.Get(), nullptr));
-
+    auto cmdListAlloc = currFrameResource->pCmdListAlloc;
+    ThrowIfFailed(cmdListAlloc->Reset());
+    if (isWireframe)
+    {
+        ThrowIfFailed(pCommandList->Reset(cmdListAlloc.Get(), PSOs["opaque_wireframe"].Get()));
+    }
+    else
+    {
+        ThrowIfFailed(pCommandList->Reset(cmdListAlloc.Get(), PSOs["opaque"].Get()));
+    }
     pCommandList->RSSetViewports(1, &screenViewport);
     pCommandList->RSSetScissorRects(1, &scissorRect);
 
@@ -89,15 +99,13 @@ void LandAndWavesApp::Draw(const GameTimer& gt)
     pCommandList->OMSetRenderTargets(
         1, &CurrentBackBufferView(), true, &DepthStencilView());
 
-    ID3D12DescriptorHeap* descriptorHeaps[] = { pCbvHeap.Get() };
-    pCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
     pCommandList->SetGraphicsRootSignature(pRootSignature.Get());
 
-    pCommandList->SetGraphicsRootDescriptorTable(1, CD3DX12_GPU_DESCRIPTOR_HANDLE(
-        pCbvHeap->GetGPUDescriptorHandleForHeapStart(), passCbvOffset, cbvSrvUavDescriptorSize
-    ));
-    pCommandList->SetPipelineState(PSOs["opaque"].Get());
-    DrawRendeItems(pCommandList.Get(), opaqueRItems);
+    auto passCB = currFrameResource->PassCB->Resource();
+    pCommandList->SetGraphicsRootConstantBufferView(1, passCB->GetGPUVirtualAddress());
+
+    //pCommandList->SetPipelineState(PSOs["opaque"].Get());
+    DrawRendeItems(pCommandList.Get(), renderItemLayer[(int)RenderLayer::Opaque]);
 
     pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
         CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT
@@ -108,11 +116,12 @@ void LandAndWavesApp::Draw(const GameTimer& gt)
     ID3D12CommandList* cmdLists[] = { pCommandList.Get() };
     pCommandQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
 
-    pSwapChain->Present(0U, 0U);
+    ThrowIfFailed(pSwapChain->Present(0U, 0U));
     currBackBuffer = (currBackBuffer + 1) % SwapChainBufferCount;
 
-    FlushCommandQueue();
+    currFrameResource->fenceVal = ++currentFence;
 
+    pCommandQueue->Signal(pFence.Get(), currentFence);
 }
 
 void LandAndWavesApp::OnMouseDown(WPARAM btnState, int x, int y)
@@ -234,89 +243,47 @@ void LandAndWavesApp::UpdateMainPassCB(const GameTimer& gt)
     currPassCB->CopyData(0, mainPassCB);
 }
 
-void LandAndWavesApp::BuildDescriptorHeaps()
+void LandAndWavesApp::UpdateWaves(const GameTimer& gt)
 {
-    UINT objCount = (UINT)opaqueRItems.size();
-
-    // Need a CBV descriptor for each object for each frame resource,
-    // +1 for the perPass CBV for each frame resource.
-    UINT numDescriptors = (objCount + 1) * gNumFrameResources;
-
-    // Save an offset to the start of the pass CBVs.  These are the last 3 descriptors.
-    passCbvOffset = objCount * gNumFrameResources;
-
-    D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc;
-    cbvHeapDesc.NumDescriptors = numDescriptors;
-    cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-    cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-    cbvHeapDesc.NodeMask = 0;
-    ThrowIfFailed(pDevice->CreateDescriptorHeap(&cbvHeapDesc,
-        IID_PPV_ARGS(&pCbvHeap)));
-}
-
-void LandAndWavesApp::BuildConstantBufferViews()
-{
-    UINT objCbByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
-    UINT objCount = (UINT)opaqueRItems.size();
-
-    for (int frameIndex = 0; frameIndex < gNumFrameResources; frameIndex++)
+    using namespace DirectX;
+    // Every quarter second, generate a random wave.
+    static float t_base = 0.0f;
+    if ((timer.TotalTime() - t_base) >= 0.25f)
     {
-        auto objectCB = frameResources[frameIndex]->ObjectCB->Resource();
-        for (UINT i = 0; i < objCount; i++)
-        {
-            D3D12_GPU_VIRTUAL_ADDRESS cbAddress = objectCB->GetGPUVirtualAddress();
+        t_base += 0.25f;
 
-            cbAddress += i * objCbByteSize;
+        int i = MathHelper::Rand(4, mWaves->RowCount() - 5);
+        int j = MathHelper::Rand(4, mWaves->ColumnCount() - 5);
 
-            int heapIndex = frameIndex * objCount + i;
-            auto handle = CD3DX12_CPU_DESCRIPTOR_HANDLE(
-                pCbvHeap->GetCPUDescriptorHandleForHeapStart(),
-                heapIndex,
-                cbvSrvUavDescriptorSize
-            );
+        float r = MathHelper::RandF(0.2f, 0.5f);
 
-            D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{};
-            cbvDesc.SizeInBytes = objCbByteSize;
-            cbvDesc.BufferLocation = cbAddress;
-
-            pDevice->CreateConstantBufferView(&cbvDesc, handle);
-        }
+        mWaves->Disturb(i, j, r);
     }
 
-    UINT passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
+    // Update the wave simulation.
+    mWaves->Update(gt.DeltaTime());
 
-    for (int frameIndex = 0; frameIndex < gNumFrameResources; frameIndex++)
+    // Update the wave vertex buffer with the new solution.
+    auto currWavesVB = currFrameResource->WavesVB.get();
+    for (int i = 0; i < mWaves->VertexCount(); ++i)
     {
-        auto passCb = frameResources[frameIndex]->PassCB->Resource();
-        D3D12_GPU_VIRTUAL_ADDRESS cbAddress = passCb->GetGPUVirtualAddress();
+        Vertex v;
 
-        // offset to the pass cbv in the descriptor heap
-        auto heapIndex = passCbvOffset + frameIndex;
-        auto handle = CD3DX12_CPU_DESCRIPTOR_HANDLE(
-            pCbvHeap->GetCPUDescriptorHandleForHeapStart(),
-            heapIndex,
-            cbvSrvUavDescriptorSize
-        );
+        v.Pos = mWaves->Position(i);
+        v.Color = XMFLOAT4(DirectX::Colors::Blue);
 
-        D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{};
-        cbvDesc.BufferLocation = cbAddress;
-        cbvDesc.SizeInBytes = passCBByteSize;
-
-        pDevice->CreateConstantBufferView(
-            &cbvDesc, handle
-        );
+        currWavesVB->CopyData(i, v);
     }
-}
 
+    // Set the dynamic VB of the wave renderitem to the current frame VB.
+    wavesRItem->Geo->VertexBufferGPU = currWavesVB->Resource();
+}
 
 void LandAndWavesApp::BuildRootSignature()
 {
-    // only one root parameter needed for the mvp matrix
     CD3DX12_ROOT_PARAMETER rootParams[2]{};
-    CD3DX12_DESCRIPTOR_RANGE cbvTable0(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0U);
-    rootParams[0].InitAsDescriptorTable(1, &cbvTable0);
-    CD3DX12_DESCRIPTOR_RANGE cbvTable1(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1U);
-    rootParams[1].InitAsDescriptorTable(1, &cbvTable1);
+    rootParams[0].InitAsConstantBufferView(0U);
+    rootParams[1].InitAsConstantBufferView(1U);
 
     CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc((UINT)std::size(rootParams), rootParams,
         0U, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
@@ -348,105 +315,61 @@ void LandAndWavesApp::BuildShadersAndInputLayout()
     };
 }
 
-void LandAndWavesApp::BuildShapeGeometry()
+void LandAndWavesApp::BuildLandGeometry()
 {
     using namespace DirectX;
 
     GeometryGenerator geoGen;
-    GeometryGenerator::MeshData box = geoGen.CreateBox(1.5f, 0.5f, 1.5f, 3);
-    GeometryGenerator::MeshData grid = geoGen.CreateGrid(20.0f, 30.0f, 60, 40);
-    GeometryGenerator::MeshData sphere = geoGen.CreateSphere(0.5f, 20, 20);
-    GeometryGenerator::MeshData cylinder = geoGen.CreateCylinder(0.5f, 0.3f, 3.0f, 20, 20);
+    GeometryGenerator::MeshData grid = geoGen.CreateGrid(160.0f, 160.0f, 50, 50);
 
     //
-    // We are concatenating all the geometry into one big vertex/index buffer.  So
-    // define the regions in the buffer each submesh covers.
+    // Extract the vertex elements we are interested and apply the height function to
+    // each vertex.  In addition, color the vertices based on their height so we have
+    // sandy looking beaches, grassy low hills, and snow mountain peaks.
     //
 
-    // Cache the vertex offsets to each object in the concatenated vertex buffer.
-    UINT boxVertexOffset = 0;
-    UINT gridVertexOffset = (UINT)box.Vertices.size();
-    UINT sphereVertexOffset = gridVertexOffset + (UINT)grid.Vertices.size();
-    UINT cylinderVertexOffset = sphereVertexOffset + (UINT)sphere.Vertices.size();
-
-    // Cache the starting index for each object in the concatenated index buffer.
-    UINT boxIndexOffset = 0;
-    UINT gridIndexOffset = (UINT)box.Indices32.size();
-    UINT sphereIndexOffset = gridIndexOffset + (UINT)grid.Indices32.size();
-    UINT cylinderIndexOffset = sphereIndexOffset + (UINT)sphere.Indices32.size();
-
-    // Define the SubmeshGeometry that cover different 
-    // regions of the vertex/index buffers.
-
-    SubmeshGeometry boxSubmesh;
-    boxSubmesh.IndexCount = (UINT)box.Indices32.size();
-    boxSubmesh.StartIndexLocation = boxIndexOffset;
-    boxSubmesh.BaseVertexLocation = boxVertexOffset;
-
-    SubmeshGeometry gridSubmesh;
-    gridSubmesh.IndexCount = (UINT)grid.Indices32.size();
-    gridSubmesh.StartIndexLocation = gridIndexOffset;
-    gridSubmesh.BaseVertexLocation = gridVertexOffset;
-
-    SubmeshGeometry sphereSubmesh;
-    sphereSubmesh.IndexCount = (UINT)sphere.Indices32.size();
-    sphereSubmesh.StartIndexLocation = sphereIndexOffset;
-    sphereSubmesh.BaseVertexLocation = sphereVertexOffset;
-
-    SubmeshGeometry cylinderSubmesh;
-    cylinderSubmesh.IndexCount = (UINT)cylinder.Indices32.size();
-    cylinderSubmesh.StartIndexLocation = cylinderIndexOffset;
-    cylinderSubmesh.BaseVertexLocation = cylinderVertexOffset;
-
-    //
-    // Extract the vertex elements we are interested in and pack the
-    // vertices of all the meshes into one vertex buffer.
-    //
-
-    auto totalVertexCount =
-        box.Vertices.size() +
-        grid.Vertices.size() +
-        sphere.Vertices.size() +
-        cylinder.Vertices.size();
-
-    std::vector<Vertex> vertices(totalVertexCount);
-
-    UINT k = 0;
-    for (size_t i = 0; i < box.Vertices.size(); ++i, ++k)
+    std::vector<Vertex> vertices(grid.Vertices.size());
+    for (size_t i = 0; i < grid.Vertices.size(); ++i)
     {
-        vertices[k].Pos = box.Vertices[i].Position;
-        vertices[k].Color = XMFLOAT4(DirectX::Colors::DarkGreen);
-    }
+        auto& p = grid.Vertices[i].Position;
+        vertices[i].Pos = p;
+        vertices[i].Pos.y = GetHillsHeight(p.x, p.z);
 
-    for (size_t i = 0; i < grid.Vertices.size(); ++i, ++k)
-    {
-        vertices[k].Pos = grid.Vertices[i].Position;
-        vertices[k].Color = XMFLOAT4(DirectX::Colors::ForestGreen);
+        // Color the vertex based on its height.
+        if (vertices[i].Pos.y < -10.0f)
+        {
+            // Sandy beach color.
+            vertices[i].Color = XMFLOAT4(1.0f, 0.96f, 0.62f, 1.0f);
+        }
+        else if (vertices[i].Pos.y < 5.0f)
+        {
+            // Light yellow-green.
+            vertices[i].Color = XMFLOAT4(0.48f, 0.77f, 0.46f, 1.0f);
+        }
+        else if (vertices[i].Pos.y < 12.0f)
+        {
+            // Dark yellow-green.
+            vertices[i].Color = XMFLOAT4(0.1f, 0.48f, 0.19f, 1.0f);
+        }
+        else if (vertices[i].Pos.y < 20.0f)
+        {
+            // Dark brown.
+            vertices[i].Color = XMFLOAT4(0.45f, 0.39f, 0.34f, 1.0f);
+        }
+        else
+        {
+            // White snow.
+            vertices[i].Color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+        }
     }
-
-    for (size_t i = 0; i < sphere.Vertices.size(); ++i, ++k)
-    {
-        vertices[k].Pos = sphere.Vertices[i].Position;
-        vertices[k].Color = XMFLOAT4(DirectX::Colors::Crimson);
-    }
-
-    for (size_t i = 0; i < cylinder.Vertices.size(); ++i, ++k)
-    {
-        vertices[k].Pos = cylinder.Vertices[i].Position;
-        vertices[k].Color = XMFLOAT4(DirectX::Colors::SteelBlue);
-    }
-
-    std::vector<std::uint16_t> indices;
-    indices.insert(indices.end(), std::begin(box.GetIndices16()), std::end(box.GetIndices16()));
-    indices.insert(indices.end(), std::begin(grid.GetIndices16()), std::end(grid.GetIndices16()));
-    indices.insert(indices.end(), std::begin(sphere.GetIndices16()), std::end(sphere.GetIndices16()));
-    indices.insert(indices.end(), std::begin(cylinder.GetIndices16()), std::end(cylinder.GetIndices16()));
 
     const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
+
+    std::vector<std::uint16_t> indices = grid.GetIndices16();
     const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
 
     auto geo = std::make_unique<MeshGeometry>();
-    geo->Name = "shapeGeo";
+    geo->Name = "landGeo";
 
     ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->VertexBufferCPU));
     CopyMemory(geo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
@@ -465,13 +388,70 @@ void LandAndWavesApp::BuildShapeGeometry()
     geo->IndexFormat = DXGI_FORMAT_R16_UINT;
     geo->IndexBufferByteSize = ibByteSize;
 
-    geo->DrawArgs["box"] = boxSubmesh;
-    geo->DrawArgs["grid"] = gridSubmesh;
-    geo->DrawArgs["sphere"] = sphereSubmesh;
-    geo->DrawArgs["cylinder"] = cylinderSubmesh;
+    SubmeshGeometry submesh;
+    submesh.IndexCount = (UINT)indices.size();
+    submesh.StartIndexLocation = 0;
+    submesh.BaseVertexLocation = 0;
 
-    geometries[geo->Name] = std::move(geo);
+    geo->DrawArgs["grid"] = submesh;
 
+    geometries["landGeo"] = std::move(geo);
+}
+
+void LandAndWavesApp::BuildWavesGeometryBuffers()
+{
+    std::vector<std::uint16_t> indices(3 * mWaves->TriangleCount()); // 3 indices per face
+    assert(mWaves->VertexCount() < 0x0000ffff);
+
+    // Iterate over each quad.
+    int m = mWaves->RowCount();
+    int n = mWaves->ColumnCount();
+    int k = 0;
+    for (int i = 0; i < m - 1; ++i)
+    {
+        for (int j = 0; j < n - 1; ++j)
+        {
+            indices[k] = i * n + j;
+            indices[k + 1] = i * n + j + 1;
+            indices[k + 2] = (i + 1) * n + j;
+
+            indices[k + 3] = (i + 1) * n + j;
+            indices[k + 4] = i * n + j + 1;
+            indices[k + 5] = (i + 1) * n + j + 1;
+
+            k += 6; // next quad
+        }
+    }
+
+    UINT vbByteSize = mWaves->VertexCount() * sizeof(Vertex);
+    UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
+
+    auto geo = std::make_unique<MeshGeometry>();
+    geo->Name = "waterGeo";
+
+    // Set dynamically.
+    geo->VertexBufferCPU = nullptr;
+    geo->VertexBufferGPU = nullptr;
+
+    ThrowIfFailed(D3DCreateBlob(ibByteSize, &geo->IndexBufferCPU));
+    CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
+
+    geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(pDevice.Get(),
+        pCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
+
+    geo->VertexByteStride = sizeof(Vertex);
+    geo->VertexBufferByteSize = vbByteSize;
+    geo->IndexFormat = DXGI_FORMAT_R16_UINT;
+    geo->IndexBufferByteSize = ibByteSize;
+
+    SubmeshGeometry submesh;
+    submesh.IndexCount = (UINT)indices.size();
+    submesh.StartIndexLocation = 0;
+    submesh.BaseVertexLocation = 0;
+
+    geo->DrawArgs["grid"] = submesh;
+
+    geometries["waterGeo"] = std::move(geo);
 }
 
 void LandAndWavesApp::BuildPSOs()
@@ -487,7 +467,6 @@ void LandAndWavesApp::BuildPSOs()
     opaquePsoDesc.VS = CD3DX12_SHADER_BYTECODE(shaders["standardVS"].Get());
     opaquePsoDesc.PS = CD3DX12_SHADER_BYTECODE(shaders["opaquePS"].Get());
     opaquePsoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-    opaquePsoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
     opaquePsoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
     opaquePsoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
     opaquePsoDesc.SampleMask = UINT_MAX;
@@ -513,7 +492,7 @@ void LandAndWavesApp::BuildFrameResources()
 {
     for (int i = 0; i < gNumFrameResources; i++)
     {
-        frameResources.push_back(std::make_unique<FrameResource>(pDevice.Get(), 1, (UINT)allRItems.size()));
+        frameResources.push_back(std::make_unique<FrameResource>(pDevice.Get(), 1, (UINT)allRItems.size(), mWaves->VertexCount()));
     }
 }
 
@@ -521,81 +500,32 @@ void LandAndWavesApp::BuildRenderItems()
 {
     using namespace DirectX;
 
-    auto boxRitem = std::make_unique<RenderItem>();
-    XMStoreFloat4x4(&boxRitem->World, XMMatrixScaling(2.0f, 2.0f, 2.0f) * XMMatrixTranslation(0.0f, 0.5f, 0.0f));
-    boxRitem->ObjCBIndex = 0;
-    boxRitem->Geo = geometries["shapeGeo"].get();
-    boxRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-    boxRitem->IndexCount = boxRitem->Geo->DrawArgs["box"].IndexCount;
-    boxRitem->StartIndexLocation = boxRitem->Geo->DrawArgs["box"].StartIndexLocation;
-    boxRitem->BaseVertexLocation = boxRitem->Geo->DrawArgs["box"].BaseVertexLocation;
-    allRItems.push_back(std::move(boxRitem));
+    auto wavesRitem = std::make_unique<RenderItem>();
+    wavesRitem->World = MathHelper::Identity4x4();
+    wavesRitem->ObjCBIndex = 0;
+    wavesRitem->Geo = geometries["waterGeo"].get();
+    wavesRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+    wavesRitem->IndexCount = wavesRitem->Geo->DrawArgs["grid"].IndexCount;
+    wavesRitem->StartIndexLocation = wavesRitem->Geo->DrawArgs["grid"].StartIndexLocation;
+    wavesRitem->BaseVertexLocation = wavesRitem->Geo->DrawArgs["grid"].BaseVertexLocation;
+
+    wavesRItem = wavesRitem.get();
+
+    renderItemLayer[(int)RenderLayer::Opaque].push_back(wavesRitem.get());
 
     auto gridRitem = std::make_unique<RenderItem>();
     gridRitem->World = MathHelper::Identity4x4();
     gridRitem->ObjCBIndex = 1;
-    gridRitem->Geo = geometries["shapeGeo"].get();
-    gridRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+    gridRitem->Geo = geometries["landGeo"].get();
+    gridRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
     gridRitem->IndexCount = gridRitem->Geo->DrawArgs["grid"].IndexCount;
     gridRitem->StartIndexLocation = gridRitem->Geo->DrawArgs["grid"].StartIndexLocation;
     gridRitem->BaseVertexLocation = gridRitem->Geo->DrawArgs["grid"].BaseVertexLocation;
+
+    renderItemLayer[(int)RenderLayer::Opaque].push_back(gridRitem.get());
+
+    allRItems.push_back(std::move(wavesRitem));
     allRItems.push_back(std::move(gridRitem));
-
-    UINT objCBIndex = 2;
-    for (int i = 0; i < 5; ++i)
-    {
-        auto leftCylRitem = std::make_unique<RenderItem>();
-        auto rightCylRitem = std::make_unique<RenderItem>();
-        auto leftSphereRitem = std::make_unique<RenderItem>();
-        auto rightSphereRitem = std::make_unique<RenderItem>();
-
-        XMMATRIX leftCylWorld = XMMatrixTranslation(-5.0f, 1.5f, -10.0f + i * 5.0f);
-        XMMATRIX rightCylWorld = XMMatrixTranslation(+5.0f, 1.5f, -10.0f + i * 5.0f);
-
-        XMMATRIX leftSphereWorld = XMMatrixTranslation(-5.0f, 3.5f, -10.0f + i * 5.0f);
-        XMMATRIX rightSphereWorld = XMMatrixTranslation(+5.0f, 3.5f, -10.0f + i * 5.0f);
-
-        XMStoreFloat4x4(&leftCylRitem->World, rightCylWorld);
-        leftCylRitem->ObjCBIndex = objCBIndex++;
-        leftCylRitem->Geo = geometries["shapeGeo"].get();
-        leftCylRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-        leftCylRitem->IndexCount = leftCylRitem->Geo->DrawArgs["cylinder"].IndexCount;
-        leftCylRitem->StartIndexLocation = leftCylRitem->Geo->DrawArgs["cylinder"].StartIndexLocation;
-        leftCylRitem->BaseVertexLocation = leftCylRitem->Geo->DrawArgs["cylinder"].BaseVertexLocation;
-
-        XMStoreFloat4x4(&rightCylRitem->World, leftCylWorld);
-        rightCylRitem->ObjCBIndex = objCBIndex++;
-        rightCylRitem->Geo = geometries["shapeGeo"].get();
-        rightCylRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-        rightCylRitem->IndexCount = rightCylRitem->Geo->DrawArgs["cylinder"].IndexCount;
-        rightCylRitem->StartIndexLocation = rightCylRitem->Geo->DrawArgs["cylinder"].StartIndexLocation;
-        rightCylRitem->BaseVertexLocation = rightCylRitem->Geo->DrawArgs["cylinder"].BaseVertexLocation;
-
-        XMStoreFloat4x4(&leftSphereRitem->World, leftSphereWorld);
-        leftSphereRitem->ObjCBIndex = objCBIndex++;
-        leftSphereRitem->Geo = geometries["shapeGeo"].get();
-        leftSphereRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-        leftSphereRitem->IndexCount = leftSphereRitem->Geo->DrawArgs["sphere"].IndexCount;
-        leftSphereRitem->StartIndexLocation = leftSphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
-        leftSphereRitem->BaseVertexLocation = leftSphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
-
-        XMStoreFloat4x4(&rightSphereRitem->World, rightSphereWorld);
-        rightSphereRitem->ObjCBIndex = objCBIndex++;
-        rightSphereRitem->Geo = geometries["shapeGeo"].get();
-        rightSphereRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-        rightSphereRitem->IndexCount = rightSphereRitem->Geo->DrawArgs["sphere"].IndexCount;
-        rightSphereRitem->StartIndexLocation = rightSphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
-        rightSphereRitem->BaseVertexLocation = rightSphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
-
-        allRItems.push_back(std::move(leftCylRitem));
-        allRItems.push_back(std::move(rightCylRitem));
-        allRItems.push_back(std::move(leftSphereRitem));
-        allRItems.push_back(std::move(rightSphereRitem));
-    }
-
-    // All the render items are opaque.
-    for (auto& e : allRItems)
-        opaqueRItems.push_back(e.get());
 }
 
 void LandAndWavesApp::DrawRendeItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& rItems)
@@ -613,14 +543,32 @@ void LandAndWavesApp::DrawRendeItems(ID3D12GraphicsCommandList* cmdList, const s
         cmdList->IASetIndexBuffer(&ri->Geo->IndexBufferView());
         cmdList->IASetPrimitiveTopology(ri->PrimitiveType);
 
-        // Offset to the CBV in the descriptor heap for this object and for this frame resource.
-        UINT cbvIndex = currFrameResourceIndex * (UINT)opaqueRItems.size() + ri->ObjCBIndex;
-        auto cbvHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE(pCbvHeap->GetGPUDescriptorHandleForHeapStart());
-        cbvHandle.Offset(cbvIndex, cbvSrvUavDescriptorSize);
+        D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objectCB->GetGPUVirtualAddress();
+        objCBAddress += ri->ObjCBIndex * objCBByteSize;
 
-        cmdList->SetGraphicsRootDescriptorTable(0, cbvHandle);
+        cmdList->SetGraphicsRootConstantBufferView(0, objCBAddress);
 
         cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
     }
+}
+
+float LandAndWavesApp::GetHillsHeight(float x, float z) const
+{
+    return 0.3f * (z * sinf(0.1f * x) + x * cosf(0.1f * z));
+}
+
+DirectX::XMFLOAT3 LandAndWavesApp::GetHillsNormal(float x, float z) const
+{
+    using namespace DirectX;
+    // n = (-df/dx, 1, -df/dz)
+    XMFLOAT3 n(
+        -0.03f * z * cosf(0.1f * x) - 0.3f * cosf(0.1f * z),
+        1.0f,
+        -0.3f * sinf(0.1f * x) + 0.03f * x * sinf(0.1f * z));
+
+    XMVECTOR unitNormal = XMVector3Normalize(XMLoadFloat3(&n));
+    XMStoreFloat3(&n, unitNormal);
+
+    return n;
 }
 

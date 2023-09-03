@@ -2,6 +2,7 @@
 #include "Common/D3DApp.h"
 #include "UploadBuffer.h"
 #include "FrameResource.h"
+#include "Common/Waves.h"
 
 struct RenderItem
 {
@@ -20,7 +21,12 @@ struct RenderItem
 	UINT IndexCount = 0;
 	UINT StartIndexLocation = 0;
 	int BaseVertexLocation = 0;
+};
 
+enum class RenderLayer : int
+{
+	Opaque = 0,
+	Count
 };
 
 class LandAndWavesApp : public D3DApp
@@ -46,25 +52,27 @@ private:
 	void UpdateCamera(const GameTimer& gt);
 	void UpdateObjectCBs(const GameTimer& gf);
 	void UpdateMainPassCB(const GameTimer& gt);
+	void UpdateWaves(const GameTimer& gt);
 
-	void BuildDescriptorHeaps();
-	void BuildConstantBufferViews();
 	void BuildRootSignature();
 	void BuildShadersAndInputLayout();
-	void BuildShapeGeometry();
+	void BuildLandGeometry();
+	void BuildWavesGeometryBuffers();
 	void BuildPSOs();
 	void BuildFrameResources();
 	void BuildRenderItems();
 	void DrawRendeItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& rItems);
+
+	float GetHillsHeight(float x, float z)const;
+	DirectX::XMFLOAT3 GetHillsNormal(float x, float z)const;
 private:
 	std::vector<std::unique_ptr<FrameResource>> frameResources;
 	FrameResource* currFrameResource = nullptr;
 	int currFrameResourceIndex = 0;
 
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> pRootSignature = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> pCbvHeap = nullptr;
+	UINT mCbvSrvDescriptorSize = 0;
 
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> pSrvDescriptorHeap = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> pRootSignature = nullptr;
 
 	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> geometries;
 	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3DBlob>> shaders;
@@ -72,14 +80,16 @@ private:
 
 	std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout;
 
+	RenderItem* wavesRItem = nullptr;
+
 	// all of the render items
 	std::vector<std::unique_ptr<RenderItem>> allRItems;
 	// render items divided by PSO
-	std::vector<RenderItem*> opaqueRItems;
+	std::vector<RenderItem*> renderItemLayer[(int)RenderLayer::Count];
+
+	std::unique_ptr<Waves> mWaves;
 
 	PassConstants mainPassCB;
-
-	UINT passCbvOffset = 0;
 
 	bool isWireframe = false;
 
@@ -89,7 +99,10 @@ private:
 
 	float theta = 1.5f * DirectX::XM_PI;
 	float phi = DirectX::XM_PIDIV4;
-	float radius = 25.0f;
+	float radius = 40.0f;
+
+	float sunTheta = 1.25 * DirectX::XM_PI;
+	float sunPhi = DirectX::XM_PIDIV4;
 
 	POINT lastMousePos;
 
