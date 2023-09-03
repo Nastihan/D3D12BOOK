@@ -1,5 +1,7 @@
 #include <Windows.h>
-#include "ShapesApp.h"
+#include "LandAndWavesApp.h"
+
+const int gNumFrameResources = 3;
 
 int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -9,7 +11,7 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
 	try
 	{
-		ShapesApp app(hInstance);
+		LandAndWavesApp app(hInstance);
 		if (!app.Initialize())
 		{
 			return 0;

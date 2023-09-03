@@ -1,7 +1,6 @@
 #include "LandAndWavesApp.h"
 #include "Common/GeometryGenerator.h"
 
-//const int gNumFrameResources = 3;
 
 LandAndWavesApp::LandAndWavesApp(HINSTANCE hInstance)
     :D3DApp(hInstance)
