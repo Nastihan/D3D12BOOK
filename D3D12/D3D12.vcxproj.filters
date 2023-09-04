@@ -53,11 +53,17 @@
     <ClCompile Include="src\FrameResource.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\ShapesApp.cpp">
-      <Filter>Source Files\Apps</Filter>
-    </ClCompile>
     <ClCompile Include="src\Common\GeometryGenerator.cpp">
       <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Common\Waves.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\LandAndWavesApp.cpp">
+      <Filter>Source Files\Apps</Filter>
+    </ClCompile>
+    <ClCompile Include="src\LitColumnsApp.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -88,14 +94,20 @@
     <ClInclude Include="src\Common\d3dx12.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="src\FrameResource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\ShapesApp.h">
-      <Filter>Header Files\Apps</Filter>
-    </ClInclude>
     <ClInclude Include="src\Common\GeometryGenerator.h">
       <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\LandAndWavesApp.h">
+      <Filter>Header Files\Apps</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Common\Waves.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\LitColumnsApp.h">
+      <Filter>Header Files\Apps</Filter>
+    </ClInclude>
+    <ClInclude Include="src\FrameResource.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

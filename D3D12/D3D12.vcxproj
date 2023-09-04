@@ -152,9 +152,11 @@
     <ClCompile Include="src\Common\GameTimer.cpp" />
     <ClCompile Include="src\Common\MathHelper.cpp" />
     <ClCompile Include="src\FrameResource.cpp" />
+    <ClCompile Include="src\LitColumnsApp.cpp" />
     <ClCompile Include="src\WinMain.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\LitColumnsApp.h" />
     <ClInclude Include="src\Common\GeometryGenerator.h" />
     <ClInclude Include="src\Common\Waves.h" />
     <ClInclude Include="src\LandAndWavesApp.h" />
