@@ -84,7 +84,7 @@ private:
 	// all of the render items
 	std::vector<std::unique_ptr<RenderItem>> allRItems;
 	// render items divided by PSO
-	std::vector<RenderItem*> pOpaqueRItems;
+	std::vector<RenderItem*> opaqueRItems;
 
 	PassConstants mainPassCB;
 

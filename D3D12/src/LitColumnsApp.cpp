@@ -100,7 +100,7 @@ void LitColumnsApp::Draw(const GameTimer& gt)
     pCommandList->SetGraphicsRootConstantBufferView(1, passCB->GetGPUVirtualAddress());
 
     //pCommandList->SetPipelineState(PSOs["opaque"].Get());
-    DrawRendeItems(pCommandList.Get(), renderItemLayer[(int)RenderLayer::Opaque]);
+    DrawRendeItems(pCommandList.Get(), opaqueRItems);
 
     pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
         CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT
