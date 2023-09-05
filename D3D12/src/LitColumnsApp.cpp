@@ -198,9 +198,11 @@ void LitColumnsApp::UpdateObjectCBs(const GameTimer& gf)
         if (e->NumFramesDirty > 0)
         {
             DirectX::XMMATRIX world = XMLoadFloat4x4(&e->World);
+            DirectX::XMMATRIX texTransform = XMLoadFloat4x4(&e->TexTransform);
 
             ObjectConstants objConstants;
             XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(world));
+            XMStoreFloat4x4(&objConstants.TexTransform, XMMatrixTranspose(texTransform));
 
             currObjectCB->CopyData(e->ObjCBIndex, objConstants);
 
@@ -212,6 +214,31 @@ void LitColumnsApp::UpdateObjectCBs(const GameTimer& gf)
 
 void LitColumnsApp::UpdateMaterialCBs(const GameTimer& gt)
 {
+    using namespace DirectX;
+
+    auto currMaterialCB = currFrameResource->MaterialCB.get();
+    for (auto& e : materials)
+    {
+        // Only update the cbuffer data if the constants have changed.  If the cbuffer
+        // data changes, it needs to be updated for each FrameResource.
+        Material* mat = e.second.get();
+        if (mat->NumFramesDirty > 0)
+        {
+            XMMATRIX matTransform = XMLoadFloat4x4(&mat->MatTransform);
+
+            MaterialConstants matConstants;
+            matConstants.DiffuseAlbedo = mat->DiffuseAlbedo;
+            matConstants.FresnelR0 = mat->FresnelR0;
+            matConstants.Roughness = mat->Roughness;
+            XMStoreFloat4x4(&matConstants.MatTransform, XMMatrixTranspose(matTransform));
+
+            currMaterialCB->CopyData(mat->MatCBIndex, matConstants);
+
+            // Next FrameResource need to be updated too.
+            mat->NumFramesDirty--;
+        }
+    }
+
 }
 
 void LitColumnsApp::UpdateMainPassCB(const GameTimer& gt)
@@ -237,17 +264,24 @@ void LitColumnsApp::UpdateMainPassCB(const GameTimer& gt)
     mainPassCB.FarZ = 1000.0f;
     mainPassCB.TotalTime = gt.TotalTime();
     mainPassCB.DeltaTime = gt.DeltaTime();
+    mainPassCB.AmbientLight = { 0.25f, 0.25f, 0.35f, 1.0f };
+    mainPassCB.Lights[0].Direction = { 0.57735f, -0.57735f, 0.57735f };
+    mainPassCB.Lights[0].Strength = { 0.6f, 0.6f, 0.6f };
+    mainPassCB.Lights[1].Direction = { -0.57735f, -0.57735f, 0.57735f };
+    mainPassCB.Lights[1].Strength = { 0.3f, 0.3f, 0.3f };
+    mainPassCB.Lights[2].Direction = { 0.0f, -0.707f, -0.707f };
+    mainPassCB.Lights[2].Strength = { 0.15f, 0.15f, 0.15f };
 
     auto currPassCB = currFrameResource->PassCB.get();
     currPassCB->CopyData(0, mainPassCB);
 }
 
-
 void LitColumnsApp::BuildRootSignature()
 {
-    CD3DX12_ROOT_PARAMETER rootParams[2]{};
+    CD3DX12_ROOT_PARAMETER rootParams[3]{};
     rootParams[0].InitAsConstantBufferView(0U);
     rootParams[1].InitAsConstantBufferView(1U);
+    rootParams[2].InitAsConstantBufferView(2);
 
     CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc((UINT)std::size(rootParams), rootParams,
         0U, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
