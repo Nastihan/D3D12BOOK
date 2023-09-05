@@ -14,6 +14,7 @@ struct RenderItem
 
 	UINT ObjCBIndex = -1;
 
+	Material* Mat = nullptr;
 	MeshGeometry* Geo = nullptr;
 
 	D3D12_PRIMITIVE_TOPOLOGY PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -21,12 +22,6 @@ struct RenderItem
 	UINT IndexCount = 0;
 	UINT StartIndexLocation = 0;
 	int BaseVertexLocation = 0;
-};
-
-enum class RenderLayer : int
-{
-	Opaque = 0,
-	Count
 };
 
 class LitColumnsApp : public D3DApp
@@ -48,50 +43,50 @@ private:
 	virtual void OnMouseUp(WPARAM btnState, int x, int y)override;
 	virtual void OnMouseMove(WPARAM btnState, int x, int y)override;
 
-	void OnkeyboardInput(const GameTimer& gt);
+	void OnKeyboardInput(const GameTimer& gt);
 	void UpdateCamera(const GameTimer& gt);
-	void UpdateObjectCBs(const GameTimer& gf);
+	void AnimateMaterials(const GameTimer& gt);
+	void UpdateObjectCBs(const GameTimer& gt);
+	void UpdateMaterialCBs(const GameTimer& gt);
 	void UpdateMainPassCB(const GameTimer& gt);
-	void UpdateWaves(const GameTimer& gt);
 
 	void BuildRootSignature();
 	void BuildShadersAndInputLayout();
-	void BuildLandGeometry();
-	void BuildWavesGeometryBuffers();
+	void BuildShapeGeometry();
+	void BuildSkullGeometry();
 	void BuildPSOs();
 	void BuildFrameResources();
+	void BuildMaterials();
 	void BuildRenderItems();
 	void DrawRendeItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& rItems);
 
-	float GetHillsHeight(float x, float z)const;
-	DirectX::XMFLOAT3 GetHillsNormal(float x, float z)const;
 private:
 	std::vector<std::unique_ptr<FrameResource>> frameResources;
 	FrameResource* currFrameResource = nullptr;
 	int currFrameResourceIndex = 0;
 
-	UINT mCbvSrvDescriptorSize = 0;
+	UINT cbvSrvDescriptorSize = 0;
 
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> pRootSignature = nullptr;
 
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> pSrvDescriptorHeap = nullptr;
+
 	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> geometries;
+	std::unordered_map<std::string, std::unique_ptr<Texture>> textures;
+	std::unordered_map<std::string, std::unique_ptr<Material>> materials;
 	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3DBlob>> shaders;
-	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D12PipelineState>> PSOs;
+
 
 	std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout;
 
-	RenderItem* wavesRItem = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> opaquePSO = nullptr;
 
 	// all of the render items
 	std::vector<std::unique_ptr<RenderItem>> allRItems;
 	// render items divided by PSO
-	std::vector<RenderItem*> renderItemLayer[(int)RenderLayer::Count];
-
-	std::unique_ptr<Waves> mWaves;
+	std::vector<RenderItem*> pOpaqueRItems;
 
 	PassConstants mainPassCB;
-
-	bool isWireframe = false;
 
 	DirectX::XMFLOAT3 eyePos = { 0.0f, 0.0f, 0.0f };
 	DirectX::XMFLOAT4X4 view = MathHelper::Identity4x4();
@@ -105,5 +100,4 @@ private:
 	float sunPhi = DirectX::XM_PIDIV4;
 
 	POINT lastMousePos;
-
 };

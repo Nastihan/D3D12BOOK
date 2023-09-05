@@ -25,9 +25,9 @@ bool LitColumnsApp::Initialize()
 
     BuildRootSignature();
     BuildShadersAndInputLayout();
-    BuildLandGeometry();
-    BuildWavesGeometryBuffers();
-    BuildRenderItems();
+    BuildShapeGeometry();
+    BuildSkullGeometry();
+    BuildMaterials();
     BuildRenderItems();
     BuildFrameResources();
     BuildPSOs();
@@ -53,7 +53,7 @@ void LitColumnsApp::OnResize()
 
 void LitColumnsApp::Update(const GameTimer& gt)
 {
-    OnkeyboardInput(gt);
+    OnKeyboardInput(gt);
     UpdateCamera(gt);
 
     currFrameResourceIndex = (currFrameResourceIndex + 1) % gNumFrameResources;
@@ -67,23 +67,18 @@ void LitColumnsApp::Update(const GameTimer& gt)
         CloseHandle(eventHanlde);
     }
 
+    AnimateMaterials(gt);
     UpdateObjectCBs(gt);
+    UpdateMaterialCBs(gt);
     UpdateMainPassCB(gt);
-    UpdateWaves(gt);
 }
 
 void LitColumnsApp::Draw(const GameTimer& gt)
 {
     auto cmdListAlloc = currFrameResource->pCmdListAlloc;
     ThrowIfFailed(cmdListAlloc->Reset());
-    if (isWireframe)
-    {
-        ThrowIfFailed(pCommandList->Reset(cmdListAlloc.Get(), PSOs["opaque_wireframe"].Get()));
-    }
-    else
-    {
-        ThrowIfFailed(pCommandList->Reset(cmdListAlloc.Get(), PSOs["opaque"].Get()));
-    }
+    ThrowIfFailed(pCommandList->Reset(cmdListAlloc.Get(), opaquePSO.Get()));
+
     pCommandList->RSSetViewports(1, &screenViewport);
     pCommandList->RSSetScissorRects(1, &scissorRect);
 
@@ -170,12 +165,8 @@ void LitColumnsApp::OnMouseMove(WPARAM btnState, int x, int y)
     lastMousePos.y = y;
 }
 
-void LitColumnsApp::OnkeyboardInput(const GameTimer& gt)
+void LitColumnsApp::OnKeyboardInput(const GameTimer& gt)
 {
-    if (GetAsyncKeyState('1') & 0x8000)
-        isWireframe = true;
-    else
-        isWireframe = false;
 }
 
 void LitColumnsApp::UpdateCamera(const GameTimer& gt)
@@ -191,6 +182,10 @@ void LitColumnsApp::UpdateCamera(const GameTimer& gt)
 
     DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH(pos, target, up);
     DirectX::XMStoreFloat4x4(&this->view, view);
+}
+
+void LitColumnsApp::AnimateMaterials(const GameTimer& gt)
+{
 }
 
 void LitColumnsApp::UpdateObjectCBs(const GameTimer& gf)
@@ -213,6 +208,10 @@ void LitColumnsApp::UpdateObjectCBs(const GameTimer& gf)
             e->NumFramesDirty--;
         }
     }
+}
+
+void LitColumnsApp::UpdateMaterialCBs(const GameTimer& gt)
+{
 }
 
 void LitColumnsApp::UpdateMainPassCB(const GameTimer& gt)
@@ -243,41 +242,6 @@ void LitColumnsApp::UpdateMainPassCB(const GameTimer& gt)
     currPassCB->CopyData(0, mainPassCB);
 }
 
-void LitColumnsApp::UpdateWaves(const GameTimer& gt)
-{
-    using namespace DirectX;
-    // Every quarter second, generate a random wave.
-    static float t_base = 0.0f;
-    if ((timer.TotalTime() - t_base) >= 0.25f)
-    {
-        t_base += 0.25f;
-
-        int i = MathHelper::Rand(4, mWaves->RowCount() - 5);
-        int j = MathHelper::Rand(4, mWaves->ColumnCount() - 5);
-
-        float r = MathHelper::RandF(0.2f, 0.5f);
-
-        mWaves->Disturb(i, j, r);
-    }
-
-    // Update the wave simulation.
-    mWaves->Update(gt.DeltaTime());
-
-    // Update the wave vertex buffer with the new solution.
-    auto currWavesVB = currFrameResource->WavesVB.get();
-    for (int i = 0; i < mWaves->VertexCount(); ++i)
-    {
-        Vertex v;
-
-        v.Pos = mWaves->Position(i);
-        v.Color = XMFLOAT4(DirectX::Colors::Blue);
-
-        currWavesVB->CopyData(i, v);
-    }
-
-    // Set the dynamic VB of the wave renderitem to the current frame VB.
-    wavesRItem->Geo->VertexBufferGPU = currWavesVB->Resource();
-}
 
 void LitColumnsApp::BuildRootSignature()
 {
@@ -315,144 +279,14 @@ void LitColumnsApp::BuildShadersAndInputLayout()
     };
 }
 
-void LitColumnsApp::BuildLandGeometry()
+void LitColumnsApp::BuildShapeGeometry()
 {
-    using namespace DirectX;
-
-    GeometryGenerator geoGen;
-    GeometryGenerator::MeshData grid = geoGen.CreateGrid(160.0f, 160.0f, 50, 50);
-
-    //
-    // Extract the vertex elements we are interested and apply the height function to
-    // each vertex.  In addition, color the vertices based on their height so we have
-    // sandy looking beaches, grassy low hills, and snow mountain peaks.
-    //
-
-    std::vector<Vertex> vertices(grid.Vertices.size());
-    for (size_t i = 0; i < grid.Vertices.size(); ++i)
-    {
-        auto& p = grid.Vertices[i].Position;
-        vertices[i].Pos = p;
-        vertices[i].Pos.y = GetHillsHeight(p.x, p.z);
-
-        // Color the vertex based on its height.
-        if (vertices[i].Pos.y < -10.0f)
-        {
-            // Sandy beach color.
-            vertices[i].Color = XMFLOAT4(1.0f, 0.96f, 0.62f, 1.0f);
-        }
-        else if (vertices[i].Pos.y < 5.0f)
-        {
-            // Light yellow-green.
-            vertices[i].Color = XMFLOAT4(0.48f, 0.77f, 0.46f, 1.0f);
-        }
-        else if (vertices[i].Pos.y < 12.0f)
-        {
-            // Dark yellow-green.
-            vertices[i].Color = XMFLOAT4(0.1f, 0.48f, 0.19f, 1.0f);
-        }
-        else if (vertices[i].Pos.y < 20.0f)
-        {
-            // Dark brown.
-            vertices[i].Color = XMFLOAT4(0.45f, 0.39f, 0.34f, 1.0f);
-        }
-        else
-        {
-            // White snow.
-            vertices[i].Color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-        }
-    }
-
-    const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
-
-    std::vector<std::uint16_t> indices = grid.GetIndices16();
-    const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
-
-    auto geo = std::make_unique<MeshGeometry>();
-    geo->Name = "landGeo";
-
-    ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->VertexBufferCPU));
-    CopyMemory(geo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
-
-    ThrowIfFailed(D3DCreateBlob(ibByteSize, &geo->IndexBufferCPU));
-    CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
-
-    geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(pDevice.Get(),
-        pCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
-
-    geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(pDevice.Get(),
-        pCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
-
-    geo->VertexByteStride = sizeof(Vertex);
-    geo->VertexBufferByteSize = vbByteSize;
-    geo->IndexFormat = DXGI_FORMAT_R16_UINT;
-    geo->IndexBufferByteSize = ibByteSize;
-
-    SubmeshGeometry submesh;
-    submesh.IndexCount = (UINT)indices.size();
-    submesh.StartIndexLocation = 0;
-    submesh.BaseVertexLocation = 0;
-
-    geo->DrawArgs["grid"] = submesh;
-
-    geometries["landGeo"] = std::move(geo);
 }
 
-void LitColumnsApp::BuildWavesGeometryBuffers()
+void LitColumnsApp::BuildSkullGeometry()
 {
-    std::vector<std::uint16_t> indices(3 * mWaves->TriangleCount()); // 3 indices per face
-    assert(mWaves->VertexCount() < 0x0000ffff);
-
-    // Iterate over each quad.
-    int m = mWaves->RowCount();
-    int n = mWaves->ColumnCount();
-    int k = 0;
-    for (int i = 0; i < m - 1; ++i)
-    {
-        for (int j = 0; j < n - 1; ++j)
-        {
-            indices[k] = i * n + j;
-            indices[k + 1] = i * n + j + 1;
-            indices[k + 2] = (i + 1) * n + j;
-
-            indices[k + 3] = (i + 1) * n + j;
-            indices[k + 4] = i * n + j + 1;
-            indices[k + 5] = (i + 1) * n + j + 1;
-
-            k += 6; // next quad
-        }
-    }
-
-    UINT vbByteSize = mWaves->VertexCount() * sizeof(Vertex);
-    UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
-
-    auto geo = std::make_unique<MeshGeometry>();
-    geo->Name = "waterGeo";
-
-    // Set dynamically.
-    geo->VertexBufferCPU = nullptr;
-    geo->VertexBufferGPU = nullptr;
-
-    ThrowIfFailed(D3DCreateBlob(ibByteSize, &geo->IndexBufferCPU));
-    CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
-
-    geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(pDevice.Get(),
-        pCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
-
-    geo->VertexByteStride = sizeof(Vertex);
-    geo->VertexBufferByteSize = vbByteSize;
-    geo->IndexFormat = DXGI_FORMAT_R16_UINT;
-    geo->IndexBufferByteSize = ibByteSize;
-
-    SubmeshGeometry submesh;
-    submesh.IndexCount = (UINT)indices.size();
-    submesh.StartIndexLocation = 0;
-    submesh.BaseVertexLocation = 0;
-
-    geo->DrawArgs["grid"] = submesh;
-
-    geometries["waterGeo"] = std::move(geo);
 }
+
 
 void LitColumnsApp::BuildPSOs()
 {
@@ -494,6 +328,10 @@ void LitColumnsApp::BuildFrameResources()
     {
         frameResources.push_back(std::make_unique<FrameResource>(pDevice.Get(), 1, (UINT)allRItems.size(), mWaves->VertexCount()));
     }
+}
+
+void LitColumnsApp::BuildMaterials()
+{
 }
 
 void LitColumnsApp::BuildRenderItems()
@@ -550,25 +388,5 @@ void LitColumnsApp::DrawRendeItems(ID3D12GraphicsCommandList* cmdList, const std
 
         cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
     }
-}
-
-float LitColumnsApp::GetHillsHeight(float x, float z) const
-{
-    return 0.3f * (z * sinf(0.1f * x) + x * cosf(0.1f * z));
-}
-
-DirectX::XMFLOAT3 LitColumnsApp::GetHillsNormal(float x, float z) const
-{
-    using namespace DirectX;
-    // n = (-df/dx, 1, -df/dz)
-    XMFLOAT3 n(
-        -0.03f * z * cosf(0.1f * x) - 0.3f * cosf(0.1f * z),
-        1.0f,
-        -0.3f * sinf(0.1f * x) + 0.03f * x * sinf(0.1f * z));
-
-    XMVECTOR unitNormal = XMVector3Normalize(XMLoadFloat3(&n));
-    XMStoreFloat3(&n, unitNormal);
-
-    return n;
 }
 
