@@ -144,6 +144,7 @@
     <ClCompile Include="src\Common\GeometryGenerator.cpp" />
     <ClCompile Include="src\Common\Waves.cpp" />
     <ClCompile Include="src\BoxApp.cpp" />
+    <ClCompile Include="src\CrateApp.cpp" />
     <ClCompile Include="src\FirstApp.cpp" />
     <ClCompile Include="SRC\COMMON\D3DApp.CPP" />
     <ClCompile Include="src\Common\d3dUtil.cpp" />
@@ -155,6 +156,7 @@
     <ClCompile Include="src\WinMain.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\CrateApp.h" />
     <ClInclude Include="src\LitColumnsApp.h" />
     <ClInclude Include="src\Common\GeometryGenerator.h" />
     <ClInclude Include="src\Common\Waves.h" />
