@@ -21,7 +21,7 @@
     <Filter Include="Source Files\Apps">
       <UniqueIdentifier>{66047fa7-40f9-43e5-948e-23e11c0b6d34}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Common\Shaders">
+    <Filter Include="Shaders">
       <UniqueIdentifier>{98dce88c-9503-4602-b088-702932874466}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -55,9 +55,6 @@
     </ClCompile>
     <ClCompile Include="src\Common\GeometryGenerator.cpp">
       <Filter>Common</Filter>
-    </ClCompile>
-    <ClCompile Include="src\LandAndWavesApp.cpp">
-      <Filter>Source Files\Apps</Filter>
     </ClCompile>
     <ClCompile Include="src\LitColumnsApp.cpp">
       <Filter>Source Files\Apps</Filter>
@@ -97,9 +94,6 @@
     <ClInclude Include="src\Common\GeometryGenerator.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="src\LandAndWavesApp.h">
-      <Filter>Header Files\Apps</Filter>
-    </ClInclude>
     <ClInclude Include="src\Common\Waves.h">
       <Filter>Common</Filter>
     </ClInclude>
@@ -112,19 +106,27 @@
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\ShaderFiles\ColorPS.hlsl">
-      <Filter>Common\Shaders</Filter>
+      <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ShaderFiles\ColorVS.hlsl">
-      <Filter>Common\Shaders</Filter>
+      <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ShaderFiles\standardVS.hlsl">
-      <Filter>Common\Shaders</Filter>
+      <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ShaderFiles\opaquePS.hlsl">
-      <Filter>Common\Shaders</Filter>
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ShaderFiles\DefaultPS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ShaderFiles\DefaultVS.hlsl">
+      <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Shaders\ShaderFiles\LightingUtil.hlsli" />
+    <None Include="Shaders\ShaderFiles\LightingUtil.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

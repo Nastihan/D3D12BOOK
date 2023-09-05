@@ -1,6 +1,5 @@
 #include <Windows.h>
-#include "LandAndWavesApp.h"
-
+#include"LitColumnsApp.h"
 const int gNumFrameResources = 3;
 
 int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
@@ -11,7 +10,7 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
 	try
 	{
-		LandAndWavesApp app(hInstance);
+		LitColumnsApp app(hInstance);
 		if (!app.Initialize())
 		{
 			return 0;
