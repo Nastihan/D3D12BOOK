@@ -536,7 +536,7 @@ void LitColumnsApp::BuildPSOs()
 
 void LitColumnsApp::BuildFrameResources()
 {
-    for (int i = 0; i < gNumFrameResources; i++)
+    for (int i = 0; i < gNumFrameResources; ++i)
     {
         frameResources.push_back(std::make_unique<FrameResource>(pDevice.Get(), 1, (UINT)allRItems.size(), (UINT)materials.size()));
     }
@@ -545,7 +545,6 @@ void LitColumnsApp::BuildFrameResources()
 void LitColumnsApp::BuildMaterials()
 {
     using namespace DirectX;
-
     auto bricks0 = std::make_unique<Material>();
     bricks0->Name = "bricks0";
     bricks0->MatCBIndex = 0;
@@ -575,7 +574,7 @@ void LitColumnsApp::BuildMaterials()
     skullMat->MatCBIndex = 3;
     skullMat->DiffuseSrvHeapIndex = 3;
     skullMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    skullMat->FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05f);
+    skullMat->FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05);
     skullMat->Roughness = 0.3f;
 
     materials["bricks0"] = std::move(bricks0);
@@ -712,6 +711,7 @@ void LitColumnsApp::DrawRendeItems(ID3D12GraphicsCommandList* cmdList, const std
 
         cmdList->SetGraphicsRootConstantBufferView(0, objCBAddress);
         cmdList->SetGraphicsRootConstantBufferView(1, matCBAddress);
+        int t = 4;
 
         cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
     }

@@ -51,5 +51,5 @@ public:
     std::unique_ptr<UploadBuffer<ObjectConstants>> ObjectCB = nullptr;
 
 
-	UINT64 fenceVal;
+	UINT64 fenceVal = 0;
 };
