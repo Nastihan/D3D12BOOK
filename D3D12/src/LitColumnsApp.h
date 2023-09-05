@@ -94,11 +94,8 @@ private:
 	DirectX::XMFLOAT4X4 proj = MathHelper::Identity4x4();
 
 	float theta = 1.5f * DirectX::XM_PI;
-	float phi = DirectX::XM_PIDIV4;
-	float radius = 40.0f;
-
-	float sunTheta = 1.25f * DirectX::XM_PI;
-	float sunPhi = DirectX::XM_PIDIV4;
+	float phi = 2.3f * DirectX::XM_PI;
+	float radius = 15.0f;
 
 	POINT lastMousePos;
 };

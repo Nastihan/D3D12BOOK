@@ -574,7 +574,7 @@ void LitColumnsApp::BuildMaterials()
     skullMat->MatCBIndex = 3;
     skullMat->DiffuseSrvHeapIndex = 3;
     skullMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    skullMat->FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05);
+    skullMat->FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05f);
     skullMat->Roughness = 0.3f;
 
     materials["bricks0"] = std::move(bricks0);
