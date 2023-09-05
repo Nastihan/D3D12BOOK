@@ -124,4 +124,7 @@
       <Filter>Common\Shaders</Filter>
     </FxCompile>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\ShaderFiles\LightingUtil.hlsli" />
+  </ItemGroup>
 </Project>
