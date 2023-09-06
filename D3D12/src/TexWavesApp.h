@@ -25,6 +25,12 @@ struct RenderItem
 	int BaseVertexLocation = 0;
 };
 
+enum class RenderLayer : int
+{
+	Opaque = 0,
+	Count
+};
+
 class TexWavesApp : public D3DApp
 {
 public:
@@ -50,16 +56,25 @@ private:
 	void UpdateObjectCBs(const GameTimer& gt);
 	void UpdateMaterialCBs(const GameTimer& gt);
 	void UpdateMainPassCB(const GameTimer& gt);
+	void UpdateWaves(const GameTimer& gt);
 
+	void LoadTextures();
 	void BuildRootSignature();
+	void BuildDescriptorHeaps();
 	void BuildShadersAndInputLayout();
-	void BuildShapeGeometry();
-	void BuildSkullGeometry();
+	void BuildLandGeometry();
+	void BuildWavesGeometry();
+	void BuildBoxGeometry();
 	void BuildPSOs();
 	void BuildFrameResources();
 	void BuildMaterials();
 	void BuildRenderItems();
-	void DrawRendeItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& rItems);
+	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
+
+	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
+
+	float GetHillsHeight(float x, float z)const;
+	DirectX::XMFLOAT3 GetHillsNormal(float x, float z)const;
 
 private:
 	std::vector<std::unique_ptr<FrameResource>> frameResources;

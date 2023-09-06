@@ -33,6 +33,7 @@ struct Vertex
 {
     DirectX::XMFLOAT3 Pos;
     DirectX::XMFLOAT3 Normal;
+    DirectX::XMFLOAT2 TexC;
 };
 
 
@@ -49,6 +50,8 @@ public:
     std::unique_ptr<UploadBuffer<PassConstants>> PassCB = nullptr;
     std::unique_ptr<UploadBuffer<MaterialConstants>> MaterialCB = nullptr;
     std::unique_ptr<UploadBuffer<ObjectConstants>> ObjectCB = nullptr;
+
+    std::unique_ptr<UploadBuffer<Vertex>> WavesVB = nullptr;
 
 
 	UINT64 fenceVal = 0;
