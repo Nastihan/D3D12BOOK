@@ -1,17 +1,17 @@
-#include "CrateApp.h"
+#include "TexWavesApp.h"
 #include "Common/GeometryGenerator.h"
 
 
-CrateApp::CrateApp(HINSTANCE hInstance)
+TexWavesApp::TexWavesApp(HINSTANCE hInstance)
     :D3DApp(hInstance)
 {
 }
 
-CrateApp::~CrateApp()
+TexWavesApp::~TexWavesApp()
 {
 }
 
-bool CrateApp::Initialize()
+bool TexWavesApp::Initialize()
 {
     if (!D3DApp::Initialize())
     {
@@ -43,7 +43,7 @@ bool CrateApp::Initialize()
     return true;
 }
 
-void CrateApp::OnResize()
+void TexWavesApp::OnResize()
 {
     D3DApp::OnResize();
 
@@ -51,7 +51,7 @@ void CrateApp::OnResize()
     DirectX::XMStoreFloat4x4(&proj, P);
 }
 
-void CrateApp::Update(const GameTimer& gt)
+void TexWavesApp::Update(const GameTimer& gt)
 {
     OnKeyboardInput(gt);
     UpdateCamera(gt);
@@ -73,7 +73,7 @@ void CrateApp::Update(const GameTimer& gt)
     UpdateMainPassCB(gt);
 }
 
-void CrateApp::Draw(const GameTimer& gt)
+void TexWavesApp::Draw(const GameTimer& gt)
 {
     auto cmdListAlloc = currFrameResource->pCmdListAlloc;
     ThrowIfFailed(cmdListAlloc->Reset());
@@ -118,7 +118,7 @@ void CrateApp::Draw(const GameTimer& gt)
     pCommandQueue->Signal(pFence.Get(), currentFence);
 }
 
-void CrateApp::OnMouseDown(WPARAM btnState, int x, int y)
+void TexWavesApp::OnMouseDown(WPARAM btnState, int x, int y)
 {
     lastMousePos.x = x;
     lastMousePos.y = y;
@@ -126,12 +126,12 @@ void CrateApp::OnMouseDown(WPARAM btnState, int x, int y)
     SetCapture(mainHWnd);
 }
 
-void CrateApp::OnMouseUp(WPARAM btnState, int x, int y)
+void TexWavesApp::OnMouseUp(WPARAM btnState, int x, int y)
 {
     ReleaseCapture();
 }
 
-void CrateApp::OnMouseMove(WPARAM btnState, int x, int y)
+void TexWavesApp::OnMouseMove(WPARAM btnState, int x, int y)
 {
     using namespace DirectX;
     if ((btnState & MK_LBUTTON) != 0)
@@ -164,11 +164,11 @@ void CrateApp::OnMouseMove(WPARAM btnState, int x, int y)
     lastMousePos.y = y;
 }
 
-void CrateApp::OnKeyboardInput(const GameTimer& gt)
+void TexWavesApp::OnKeyboardInput(const GameTimer& gt)
 {
 }
 
-void CrateApp::UpdateCamera(const GameTimer& gt)
+void TexWavesApp::UpdateCamera(const GameTimer& gt)
 {
     eyePos.x = radius * sinf(phi) * cosf(theta);
     eyePos.z = radius * sinf(phi) * sinf(theta);
@@ -183,11 +183,11 @@ void CrateApp::UpdateCamera(const GameTimer& gt)
     DirectX::XMStoreFloat4x4(&this->view, view);
 }
 
-void CrateApp::AnimateMaterials(const GameTimer& gt)
+void TexWavesApp::AnimateMaterials(const GameTimer& gt)
 {
 }
 
-void CrateApp::UpdateObjectCBs(const GameTimer& gf)
+void TexWavesApp::UpdateObjectCBs(const GameTimer& gf)
 {
     auto currObjectCB = currFrameResource->ObjectCB.get();
     for (auto& e : allRItems)
@@ -211,7 +211,7 @@ void CrateApp::UpdateObjectCBs(const GameTimer& gf)
     }
 }
 
-void CrateApp::UpdateMaterialCBs(const GameTimer& gt)
+void TexWavesApp::UpdateMaterialCBs(const GameTimer& gt)
 {
     using namespace DirectX;
 
@@ -240,7 +240,7 @@ void CrateApp::UpdateMaterialCBs(const GameTimer& gt)
 
 }
 
-void CrateApp::UpdateMainPassCB(const GameTimer& gt)
+void TexWavesApp::UpdateMainPassCB(const GameTimer& gt)
 {
     DirectX::XMMATRIX view = XMLoadFloat4x4(&this->view);
     DirectX::XMMATRIX proj = XMLoadFloat4x4(&this->proj);
@@ -275,7 +275,7 @@ void CrateApp::UpdateMainPassCB(const GameTimer& gt)
     currPassCB->CopyData(0, mainPassCB);
 }
 
-void CrateApp::BuildRootSignature()
+void TexWavesApp::BuildRootSignature()
 {
     CD3DX12_ROOT_PARAMETER rootParams[3]{};
     rootParams[0].InitAsConstantBufferView(0U);
@@ -300,7 +300,7 @@ void CrateApp::BuildRootSignature()
         rootSigBlob->GetBufferSize(), IID_PPV_ARGS(&pRootSignature)));
 }
 
-void CrateApp::BuildShadersAndInputLayout()
+void TexWavesApp::BuildShadersAndInputLayout()
 {
     ThrowIfFailed(D3DReadFileToBlob(L"Shaders\\ShaderBins\\DefaultVS.cso", shaders["standardVS"].GetAddressOf()));
     ThrowIfFailed(D3DReadFileToBlob(L"Shaders\\ShaderBins\\DefaultPS.cso", shaders["opaquePS"].GetAddressOf()));
@@ -312,7 +312,7 @@ void CrateApp::BuildShadersAndInputLayout()
     };
 }
 
-void CrateApp::BuildShapeGeometry()
+void TexWavesApp::BuildShapeGeometry()
 {
     GeometryGenerator geoGen;
     GeometryGenerator::MeshData box = geoGen.CreateBox(1.5f, 0.5f, 1.5f, 3);
@@ -432,7 +432,7 @@ void CrateApp::BuildShapeGeometry()
     geometries[geo->Name] = std::move(geo);
 }
 
-void CrateApp::BuildSkullGeometry()
+void TexWavesApp::BuildSkullGeometry()
 {
     std::ifstream fin("Models/skull.txt");
 
@@ -508,7 +508,7 @@ void CrateApp::BuildSkullGeometry()
 }
 
 
-void CrateApp::BuildPSOs()
+void TexWavesApp::BuildPSOs()
 {
     D3D12_GRAPHICS_PIPELINE_STATE_DESC opaquePsoDesc;
 
@@ -534,7 +534,7 @@ void CrateApp::BuildPSOs()
 
 }
 
-void CrateApp::BuildFrameResources()
+void TexWavesApp::BuildFrameResources()
 {
     for (int i = 0; i < gNumFrameResources; ++i)
     {
@@ -542,7 +542,7 @@ void CrateApp::BuildFrameResources()
     }
 }
 
-void CrateApp::BuildMaterials()
+void TexWavesApp::BuildMaterials()
 {
     using namespace DirectX;
     auto bricks0 = std::make_unique<Material>();
@@ -583,7 +583,7 @@ void CrateApp::BuildMaterials()
     materials["skullMat"] = std::move(skullMat);
 }
 
-void CrateApp::BuildRenderItems()
+void TexWavesApp::BuildRenderItems()
 {
     using namespace DirectX;
 
@@ -689,7 +689,7 @@ void CrateApp::BuildRenderItems()
         opaqueRItems.push_back(e.get());
 }
 
-void CrateApp::DrawRendeItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& rItems)
+void TexWavesApp::DrawRendeItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& rItems)
 {
     UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
     UINT matCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(MaterialConstants));

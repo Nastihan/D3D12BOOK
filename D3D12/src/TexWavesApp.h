@@ -25,13 +25,13 @@ struct RenderItem
 	int BaseVertexLocation = 0;
 };
 
-class CrateApp : public D3DApp
+class TexWavesApp : public D3DApp
 {
 public:
-	CrateApp(HINSTANCE hInstance);
-	CrateApp(CrateApp& rhs) = delete;
-	CrateApp& operator=(const CrateApp& rhs) = delete;
-	~CrateApp();
+	TexWavesApp(HINSTANCE hInstance);
+	TexWavesApp(TexWavesApp& rhs) = delete;
+	TexWavesApp& operator=(const TexWavesApp& rhs) = delete;
+	~TexWavesApp();
 
 	virtual bool Initialize() override;
 

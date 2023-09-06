@@ -62,7 +62,7 @@
     <ClCompile Include="src\Common\Waves.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="src\CrateApp.cpp">
+    <ClCompile Include="src\TexWavesApp.cpp">
       <Filter>Source Files\Apps</Filter>
     </ClCompile>
   </ItemGroup>
@@ -106,7 +106,7 @@
     <ClInclude Include="src\FrameResource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\CrateApp.h">
+    <ClInclude Include="src\TexWavesApp.h">
       <Filter>Header Files\Apps</Filter>
     </ClInclude>
   </ItemGroup>
