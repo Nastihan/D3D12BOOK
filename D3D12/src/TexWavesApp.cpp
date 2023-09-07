@@ -386,6 +386,31 @@ void TexWavesApp::BuildShadersAndInputLayout()
 
 void TexWavesApp::LoadTextures()
 {
+    auto grassTex = std::make_unique<Texture>();
+    grassTex->Name = "grassTex";
+    grassTex->Filename = L"Textures/grass.dds";
+    DirectX::CreateDDSTextureFromFile12(pDevice.Get(), pCommandList.Get(),
+        grassTex->Filename.c_str(), grassTex->Resource,
+        grassTex->UploadHeap
+    );
+
+    auto waterTex = std::make_unique<Texture>();
+    waterTex->Name = "waterTex";
+    waterTex->Filename = L"Textures/water1.dds";
+    ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(pDevice.Get(),
+        pCommandList.Get(), waterTex->Filename.c_str(),
+        waterTex->Resource, waterTex->UploadHeap));
+
+    auto fenceTex = std::make_unique<Texture>();
+    fenceTex->Name = "fenceTex";
+    fenceTex->Filename = L"Textures/WoodCrate01.dds";
+    ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(pDevice.Get(),
+        pCommandList.Get(), fenceTex->Filename.c_str(),
+        fenceTex->Resource, fenceTex->UploadHeap));
+
+    textures[grassTex->Name] = std::move(grassTex);
+    textures[waterTex->Name] = std::move(waterTex);
+    textures[fenceTex->Name] = std::move(fenceTex);
 }
 
 
