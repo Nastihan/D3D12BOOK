@@ -627,6 +627,11 @@ std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> TexWavesApp::GetStaticSamplers(
         16U
     );
 
+    return {
+        pointWrap, pointClamp,
+        linearWrap, linearClamp,
+        anistropicWrap, anistropicClamp
+    };
 }
 
 float TexWavesApp::GetHillsHeight(float x, float z) const
