@@ -69,7 +69,7 @@ private:
 	void BuildFrameResources();
 	void BuildMaterials();
 	void BuildRenderItems();
-	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
+	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& rItems);
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
 
@@ -91,16 +91,20 @@ private:
 	std::unordered_map<std::string, std::unique_ptr<Texture>> textures;
 	std::unordered_map<std::string, std::unique_ptr<Material>> materials;
 	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3DBlob>> shaders;
-
+	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D12PipelineState>> PSOs;
 
 	std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout;
+
+	RenderItem* wavesRItem = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> opaquePSO = nullptr;
 
 	// all of the render items
 	std::vector<std::unique_ptr<RenderItem>> allRItems;
 	// render items divided by PSO
-	std::vector<RenderItem*> opaqueRItems;
+	std::vector<RenderItem*> rItemLayer[(int)RenderLayer::Count];
+
+	std::unique_ptr<Waves> waves;
 
 	PassConstants mainPassCB;
 

@@ -9,6 +9,8 @@ TexWavesApp::TexWavesApp(HINSTANCE hInstance)
 
 TexWavesApp::~TexWavesApp()
 {
+    if (pDevice != nullptr)
+        FlushCommandQueue();
 }
 
 bool TexWavesApp::Initialize()
@@ -23,10 +25,13 @@ bool TexWavesApp::Initialize()
 
     cbvSrvDescriptorSize = pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
+    LoadTextures();
     BuildRootSignature();
+    BuildDescriptorHeaps();
     BuildShadersAndInputLayout();
-    BuildShapeGeometry();
-    BuildSkullGeometry();
+    BuildLandGeometry();
+    BuildWavesGeometry();
+    BuildBoxGeometry();
     BuildMaterials();
     BuildRenderItems();
     BuildFrameResources();
@@ -71,6 +76,7 @@ void TexWavesApp::Update(const GameTimer& gt)
     UpdateObjectCBs(gt);
     UpdateMaterialCBs(gt);
     UpdateMainPassCB(gt);
+    UpdateWaves(gt);
 }
 
 void TexWavesApp::Draw(const GameTimer& gt)
@@ -275,6 +281,46 @@ void TexWavesApp::UpdateMainPassCB(const GameTimer& gt)
     currPassCB->CopyData(0, mainPassCB);
 }
 
+void TexWavesApp::UpdateWaves(const GameTimer& gt)
+{
+    // Every quarter second, generate a random wave.
+    static float t_base = 0.0f;
+    if ((timer.TotalTime() - t_base) >= 0.25f)
+    {
+        t_base += 0.25f;
+
+        int i = MathHelper::Rand(4, waves->RowCount() - 5);
+        int j = MathHelper::Rand(4, waves->ColumnCount() - 5);
+
+        float r = MathHelper::RandF(0.2f, 0.5f);
+
+        waves->Disturb(i, j, r);
+    }
+
+    // Update the wave simulation.
+    waves->Update(gt.DeltaTime());
+
+    // Update the wave vertex buffer with the new solution.
+    auto currWavesVB = currFrameResource->WavesVB.get();
+    for (int i = 0; i < waves->VertexCount(); ++i)
+    {
+        Vertex v;
+
+        v.Pos = waves->Position(i);
+        v.Normal = waves->Normal(i);
+
+        // Derive tex-coords from position by 
+        // mapping [-w/2,w/2] --> [0,1]
+        v.TexC.x = 0.5f + v.Pos.x / waves->Width();
+        v.TexC.y = 0.5f - v.Pos.z / waves->Depth();
+
+        currWavesVB->CopyData(i, v);
+    }
+
+    // Set the dynamic VB of the wave renderitem to the current frame VB.
+    wavesRItem->Geo->VertexBufferGPU = currWavesVB->Resource();
+}
+
 void TexWavesApp::BuildRootSignature()
 {
     CD3DX12_ROOT_PARAMETER rootParams[3]{};
@@ -310,6 +356,15 @@ void TexWavesApp::BuildShadersAndInputLayout()
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
         { "NORMAL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
     };
+}
+
+void TexWavesApp::LoadTextures()
+{
+}
+
+
+void TexWavesApp::BuildDescriptorHeaps()
+{
 }
 
 void TexWavesApp::BuildPSOs()
@@ -491,6 +546,25 @@ void TexWavesApp::BuildRenderItems()
     // All the render items are opaque.
     for (auto& e : allRItems)
         opaqueRItems.push_back(e.get());
+}
+
+void TexWavesApp::BuildBoxGeometry()
+{
+}
+
+
+std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> TexWavesApp::GetStaticSamplers()
+{
+
+}
+
+float TexWavesApp::GetHillsHeight(float x, float z) const
+{
+    return 0.0f;
+}
+
+DirectX::XMFLOAT3 TexWavesApp::GetHillsNormal(float x, float z) const
+{
 }
 
 void TexWavesApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& rItems)
