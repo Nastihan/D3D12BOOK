@@ -105,7 +105,7 @@ void TexWavesApp::Draw(const GameTimer& gt)
     auto passCB = currFrameResource->PassCB->Resource();
     pCommandList->SetGraphicsRootConstantBufferView(2, passCB->GetGPUVirtualAddress());
 
-    DrawRenderItems(pCommandList.Get(), opaqueRItems);
+    DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Opaque]);
 
     pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
         CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT
@@ -191,6 +191,26 @@ void TexWavesApp::UpdateCamera(const GameTimer& gt)
 
 void TexWavesApp::AnimateMaterials(const GameTimer& gt)
 {
+    // Scroll the water material texture coordinates.
+    auto waterMat = materials["water"].get();
+
+    float& tu = waterMat->MatTransform(3, 0);
+    float& tv = waterMat->MatTransform(3, 1);
+
+    tu += 0.1f * gt.DeltaTime();
+    tv += 0.02f * gt.DeltaTime();
+
+    if (tu >= 1.0f)
+        tu -= 1.0f;
+
+    if (tv >= 1.0f)
+        tv -= 1.0f;
+
+    waterMat->MatTransform(3, 0) = tu;
+    waterMat->MatTransform(3, 1) = tv;
+
+    // Material has changed, so need to update cbuffer.
+    waterMat->NumFramesDirty = gNumFrameResources;
 }
 
 void TexWavesApp::UpdateObjectCBs(const GameTimer& gf)
@@ -323,10 +343,15 @@ void TexWavesApp::UpdateWaves(const GameTimer& gt)
 
 void TexWavesApp::BuildRootSignature()
 {
+    // texture table
+    auto texTable = CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+
     CD3DX12_ROOT_PARAMETER rootParams[3]{};
-    rootParams[0].InitAsConstantBufferView(0U);
-    rootParams[1].InitAsConstantBufferView(1U);
-    rootParams[2].InitAsConstantBufferView(2);
+    rootParams[0].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_PIXEL);
+    rootParams[1].InitAsConstantBufferView(0);
+    rootParams[2].InitAsConstantBufferView(1);
+    rootParams[3].InitAsConstantBufferView(2);
+
 
     CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc((UINT)std::size(rootParams), rootParams,
         0U, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
@@ -555,6 +580,52 @@ void TexWavesApp::BuildBoxGeometry()
 
 std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> TexWavesApp::GetStaticSamplers()
 {
+
+    const auto pointWrap = CD3DX12_STATIC_SAMPLER_DESC(
+        0U, D3D12_FILTER_MIN_MAG_MIP_POINT,
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP
+    );
+
+    const auto pointClamp = CD3DX12_STATIC_SAMPLER_DESC(
+        1U, D3D12_FILTER_MIN_MAG_MIP_POINT,
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP
+    );
+
+    const auto linearWrap = CD3DX12_STATIC_SAMPLER_DESC(
+        2U, D3D12_FILTER_MIN_MAG_MIP_LINEAR,
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP
+    );
+
+    const auto linearClamp = CD3DX12_STATIC_SAMPLER_DESC(
+        3U, D3D12_FILTER_MIN_MAG_MIP_LINEAR,
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP
+    );
+
+    const auto anistropicWrap = CD3DX12_STATIC_SAMPLER_DESC(
+        4U, D3D12_FILTER_ANISOTROPIC,
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+        0.0f,
+        16U
+    );
+
+    const auto anistropicClamp = CD3DX12_STATIC_SAMPLER_DESC(
+        5U, D3D12_FILTER_ANISOTROPIC,
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+        0.0f,
+        16U
+    );
 
 }
 
