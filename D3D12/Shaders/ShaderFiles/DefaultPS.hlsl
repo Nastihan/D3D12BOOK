@@ -65,10 +65,9 @@ struct VertexOut
     float2 TexC : TEXCOORD;
 };
 
-
 float4 main(VertexOut pin) : SV_Target
 {
-    float4 diffuseAlbedo = gDiffuseMap.Sample(gsamAnisotropicWrap, pin.TexC) * gDiffuseAlbedo;
+    float4 diffuseAlbedo = gDiffuseMap.Sample(gsamAnisotropicWrap, pin.TexC) ;
 	
     // Interpolating normal can unnormalize it, so renormalize it.
     pin.NormalW = normalize(pin.NormalW);
@@ -85,7 +84,7 @@ float4 main(VertexOut pin) : SV_Target
     float4 directLight = ComputeLighting(gLights, mat, pin.PosW,
         pin.NormalW, toEyeW, shadowFactor);
 
-    float4 litColor = ambient + directLight;
+    float4 litColor = diffuseAlbedo;
 
     // Common convention to take alpha from diffuse albedo.
     litColor.a = diffuseAlbedo.a;

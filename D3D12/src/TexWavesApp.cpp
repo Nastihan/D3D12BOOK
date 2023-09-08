@@ -220,6 +220,7 @@ void TexWavesApp::AnimateMaterials(const GameTimer& gt)
 
 void TexWavesApp::UpdateObjectCBs(const GameTimer& gf)
 {
+    using namespace DirectX;
     auto currObjectCB = currFrameResource->ObjectCB.get();
     for (auto& e : allRItems)
     {
@@ -227,8 +228,8 @@ void TexWavesApp::UpdateObjectCBs(const GameTimer& gf)
         // This needs to be tracked per frame resource.
         if (e->NumFramesDirty > 0)
         {
-            DirectX::XMMATRIX world = XMLoadFloat4x4(&e->World);
-            DirectX::XMMATRIX texTransform = XMLoadFloat4x4(&e->TexTransform);
+            XMMATRIX world = XMLoadFloat4x4(&e->World);
+            XMMATRIX texTransform = XMLoadFloat4x4(&e->TexTransform);
 
             ObjectConstants objConstants;
             XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(world));
