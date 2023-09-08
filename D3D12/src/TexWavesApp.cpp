@@ -416,6 +416,39 @@ void TexWavesApp::LoadTextures()
 
 void TexWavesApp::BuildDescriptorHeaps()
 {
+    // srv heap
+    D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc{};
+    srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+    srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+    srvHeapDesc.NumDescriptors = 3;
+    ThrowIfFailed(pDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&pSrvDescriptorHeap)));
+
+    CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(pSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+
+    auto grassTex = textures["grassTex"]->Resource;
+    auto waterTex = textures["waterTex"]->Resource;
+    auto fenceTex = textures["fenceTex"]->Resource;
+
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srvDesc.Format = grassTex->GetDesc().Format;
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+    srvDesc.Texture2D.MostDetailedMip = 0;
+    srvDesc.Texture2D.MipLevels = -1;
+    pDevice->CreateShaderResourceView(grassTex.Get(), &srvDesc, hDescriptor);
+
+    // next descriptor
+    hDescriptor.Offset(1, cbvSrvDescriptorSize);
+
+    srvDesc.Format = waterTex->GetDesc().Format;
+    pDevice->CreateShaderResourceView(waterTex.Get(), &srvDesc, hDescriptor);
+
+    // next descriptor
+    hDescriptor.Offset(1, cbvSrvDescriptorSize);
+
+    srvDesc.Format = fenceTex->GetDesc().Format;
+    pDevice->CreateShaderResourceView(fenceTex.Get(), &srvDesc, hDescriptor);
+
 }
 
 void TexWavesApp::BuildPSOs()
