@@ -418,9 +418,14 @@ bool D3DApp::InitDirect3D()
 	
 	ThrowIfFailed(CreateDXGIFactory1(IID_PPV_ARGS(&pDxgiFactory)));
 
+	Microsoft::WRL::ComPtr<IDXGIFactory4> pdxgiFactory;
+	ThrowIfFailed(CreateDXGIFactory2(0, IID_PPV_ARGS(&pdxgiFactory)));
+	Microsoft::WRL::ComPtr<IDXGIAdapter> pAdapter;
+	pdxgiFactory->EnumAdapters(1U, pAdapter.GetAddressOf());
+
 	// hardware device
 	ThrowIfFailed( D3D12CreateDevice(
-		nullptr,
+		pAdapter.Get(),
 		D3D_FEATURE_LEVEL_12_1,
 		IID_PPV_ARGS(&pDevice)
 	));

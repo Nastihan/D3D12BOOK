@@ -102,10 +102,10 @@ void TexWavesApp::Draw(const GameTimer& gt)
     pCommandList->OMSetRenderTargets(
         1, &CurrentBackBufferView(), true, &DepthStencilView());
 
-    pCommandList->SetGraphicsRootSignature(pRootSignature.Get());
-
     ID3D12DescriptorHeap* descHeaps[] = { pSrvDescriptorHeap.Get() };
-    pCommandList->SetDescriptorHeaps(std::size(descHeaps), descHeaps);
+    pCommandList->SetDescriptorHeaps(_countof(descHeaps), descHeaps);
+
+    pCommandList->SetGraphicsRootSignature(pRootSignature.Get());
 
     auto passCB = currFrameResource->PassCB->Resource();
     pCommandList->SetGraphicsRootConstantBufferView(2, passCB->GetGPUVirtualAddress());
