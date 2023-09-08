@@ -104,6 +104,9 @@ void TexWavesApp::Draw(const GameTimer& gt)
 
     pCommandList->SetGraphicsRootSignature(pRootSignature.Get());
 
+    ID3D12DescriptorHeap* descHeaps[] = { pSrvDescriptorHeap.Get() };
+    pCommandList->SetDescriptorHeaps(std::size(descHeaps), descHeaps);
+
     auto passCB = currFrameResource->PassCB->Resource();
     pCommandList->SetGraphicsRootConstantBufferView(2, passCB->GetGPUVirtualAddress());
 
@@ -421,7 +424,7 @@ void TexWavesApp::BuildDescriptorHeaps()
 {
     // srv heap
     D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc{};
-    srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+    srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
     srvHeapDesc.NumDescriptors = 3;
     ThrowIfFailed(pDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&pSrvDescriptorHeap)));
@@ -825,11 +828,15 @@ void TexWavesApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std:
         cmdList->IASetIndexBuffer(&ri->Geo->IndexBufferView());
         cmdList->IASetPrimitiveTopology(ri->PrimitiveType);
 
+        CD3DX12_GPU_DESCRIPTOR_HANDLE tex(pSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+        tex.Offset(ri->Mat->DiffuseSrvHeapIndex, cbvSrvDescriptorSize);
+
         D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objectCB->GetGPUVirtualAddress() + ri->ObjCBIndex * objCBByteSize;
         D3D12_GPU_VIRTUAL_ADDRESS matCBAddress = matCB->GetGPUVirtualAddress() + ri->Mat->MatCBIndex * matCBByteSize;
 
-        cmdList->SetGraphicsRootConstantBufferView(0, objCBAddress);
-        cmdList->SetGraphicsRootConstantBufferView(1, matCBAddress);
+        cmdList->SetGraphicsRootDescriptorTable(0, tex);
+        cmdList->SetGraphicsRootConstantBufferView(1, objCBAddress);
+        cmdList->SetGraphicsRootConstantBufferView(3, matCBAddress);
         int t = 4;
 
         cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
