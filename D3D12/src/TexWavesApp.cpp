@@ -66,7 +66,7 @@ void TexWavesApp::Update(const GameTimer& gt)
     currFrameResourceIndex = (currFrameResourceIndex + 1) % gNumFrameResources;
     currFrameResource = frameResources[currFrameResourceIndex].get();
 
-    if (pFence->GetCompletedValue() < currFrameResource->fenceVal)
+    if (currFrameResource->fenceVal != 0 && pFence->GetCompletedValue() < currFrameResource->fenceVal)
     {
         HANDLE eventHanlde = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
         ThrowIfFailed(pFence->SetEventOnCompletion(currFrameResource->fenceVal, eventHanlde));
@@ -85,7 +85,7 @@ void TexWavesApp::Draw(const GameTimer& gt)
 {
     auto cmdListAlloc = currFrameResource->pCmdListAlloc;
     ThrowIfFailed(cmdListAlloc->Reset());
-    ThrowIfFailed(pCommandList->Reset(cmdListAlloc.Get(), opaquePSO.Get()));
+    ThrowIfFailed(pCommandList->Reset(cmdListAlloc.Get(), PSOs["opaque"].Get()));
 
     pCommandList->RSSetViewports(1, &screenViewport);
     pCommandList->RSSetScissorRects(1, &scissorRect);
@@ -640,7 +640,7 @@ void TexWavesApp::BuildPSOs()
     opaquePsoDesc.SampleDesc.Count = m4xMsaaState ? 4 : 1;
     opaquePsoDesc.SampleDesc.Quality = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
     opaquePsoDesc.DSVFormat = depthStencilFormat;
-    ThrowIfFailed(pDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&opaquePSO)));
+    ThrowIfFailed(pDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&PSOs["opaque"])));
 
 }
 
@@ -648,9 +648,8 @@ void TexWavesApp::BuildFrameResources()
 {
     for (int i = 0; i < gNumFrameResources; ++i)
     {
-        frameResources.push_back(std::make_unique<FrameResource>(pDevice.Get(), 1,
-            (UINT)allRItems.size(), (UINT)materials.size(),
-            waves->VertexCount()));
+        frameResources.push_back(std::make_unique<FrameResource>(pDevice.Get(),
+            1, (UINT)allRItems.size(), (UINT)materials.size(), waves->VertexCount()));
     }
 }
 

@@ -97,8 +97,6 @@ private:
 
 	RenderItem* wavesRItem = nullptr;
 
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> opaquePSO = nullptr;
-
 	// all of the render items
 	std::vector<std::unique_ptr<RenderItem>> allRItems;
 	// render items divided by PSO
@@ -114,7 +112,7 @@ private:
 
 	float theta = 1.5f * DirectX::XM_PI;
 	float phi = 2.3f * DirectX::XM_PI;
-	float radius = 15.0f;
+	float radius = 50.0f;
 
 	POINT lastMousePos;
 };
