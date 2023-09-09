@@ -160,7 +160,7 @@ void TexWavesApp::OnMouseMove(WPARAM btnState, int x, int y)
     }
     else if ((btnState & MK_RBUTTON) != 0)
     {
-        // Make each pixel correspond to 0.005 unit in the scene.
+        // Make each pixel correspond to 0.2 unit in the scene.
         float dx = 0.2f * static_cast<float>(x - lastMousePos.x);
         float dy = 0.2f * static_cast<float>(y - lastMousePos.y);
 
@@ -181,17 +181,19 @@ void TexWavesApp::OnKeyboardInput(const GameTimer& gt)
 
 void TexWavesApp::UpdateCamera(const GameTimer& gt)
 {
+    using namespace DirectX;
+    // Convert Spherical to Cartesian coordinates.
     eyePos.x = radius * sinf(phi) * cosf(theta);
     eyePos.z = radius * sinf(phi) * sinf(theta);
     eyePos.y = radius * cosf(phi);
 
-    // view matrix
-    DirectX::XMVECTOR pos = DirectX::XMVectorSet(eyePos.x, eyePos.y, eyePos.z, 1.0f);
-    DirectX::XMVECTOR target = DirectX::XMVectorZero();
-    DirectX::XMVECTOR up = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+    // Build the view matrix.
+    XMVECTOR pos = XMVectorSet(eyePos.x, eyePos.y, eyePos.z, 1.0f);
+    XMVECTOR target = XMVectorZero();
+    XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
-    DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH(pos, target, up);
-    DirectX::XMStoreFloat4x4(&this->view, view);
+    XMMATRIX view = XMMatrixLookAtLH(pos, target, up);
+    XMStoreFloat4x4(&this->view, view);
 }
 
 void TexWavesApp::AnimateMaterials(const GameTimer& gt)
