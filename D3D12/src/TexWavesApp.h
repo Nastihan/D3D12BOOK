@@ -4,6 +4,8 @@
 #include "FrameResource.h"
 #include "Common/Waves.h"
 
+using namespace DirectX::PackedVector;
+
 struct RenderItem
 {
 	RenderItem() = default;
@@ -69,7 +71,7 @@ private:
 	void BuildFrameResources();
 	void BuildMaterials();
 	void BuildRenderItems();
-	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& rItems);
+	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
 

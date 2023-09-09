@@ -161,8 +161,8 @@ void TexWavesApp::OnMouseMove(WPARAM btnState, int x, int y)
     else if ((btnState & MK_RBUTTON) != 0)
     {
         // Make each pixel correspond to 0.005 unit in the scene.
-        float dx = 0.05f * static_cast<float>(x - lastMousePos.x);
-        float dy = 0.05f * static_cast<float>(y - lastMousePos.y);
+        float dx = 0.2f * static_cast<float>(x - lastMousePos.x);
+        float dy = 0.2f * static_cast<float>(y - lastMousePos.y);
 
         // Update the camera radius based on input.
         radius += dx - dy;
@@ -218,7 +218,7 @@ void TexWavesApp::AnimateMaterials(const GameTimer& gt)
     waterMat->NumFramesDirty = gNumFrameResources;
 }
 
-void TexWavesApp::UpdateObjectCBs(const GameTimer& gf)
+void TexWavesApp::UpdateObjectCBs(const GameTimer& gt)
 {
     using namespace DirectX;
     auto currObjectCB = currFrameResource->ObjectCB.get();
@@ -246,7 +246,6 @@ void TexWavesApp::UpdateObjectCBs(const GameTimer& gf)
 void TexWavesApp::UpdateMaterialCBs(const GameTimer& gt)
 {
     using namespace DirectX;
-
     auto currMaterialCB = currFrameResource->MaterialCB.get();
     for (auto& e : materials)
     {
@@ -269,39 +268,39 @@ void TexWavesApp::UpdateMaterialCBs(const GameTimer& gt)
             mat->NumFramesDirty--;
         }
     }
-
 }
 
 void TexWavesApp::UpdateMainPassCB(const GameTimer& gt)
 {
-    DirectX::XMMATRIX view = XMLoadFloat4x4(&this->view);
-    DirectX::XMMATRIX proj = XMLoadFloat4x4(&this->proj);
+    using namespace DirectX;
+    XMMATRIX view = XMLoadFloat4x4(&this->view);
+    XMMATRIX proj = XMLoadFloat4x4(&this->proj);
 
-    DirectX::XMMATRIX viewProj = XMMatrixMultiply(view, proj);
-    DirectX::XMMATRIX invView = XMMatrixInverse(&XMMatrixDeterminant(view), view);
-    DirectX::XMMATRIX invProj = XMMatrixInverse(&XMMatrixDeterminant(proj), proj);
-    DirectX::XMMATRIX invViewProj = XMMatrixInverse(&XMMatrixDeterminant(viewProj), viewProj);
+    XMMATRIX viewProj = XMMatrixMultiply(view, proj);
+    XMMATRIX invView = XMMatrixInverse(&XMMatrixDeterminant(view), view);
+    XMMATRIX invProj = XMMatrixInverse(&XMMatrixDeterminant(proj), proj);
+    XMMATRIX invViewProj = XMMatrixInverse(&XMMatrixDeterminant(viewProj), viewProj);
 
-    DirectX::XMStoreFloat4x4(&mainPassCB.View, XMMatrixTranspose(view));
-    DirectX::XMStoreFloat4x4(&mainPassCB.InvView, XMMatrixTranspose(invView));
-    DirectX::XMStoreFloat4x4(&mainPassCB.Proj, XMMatrixTranspose(proj));
-    DirectX::XMStoreFloat4x4(&mainPassCB.InvProj, XMMatrixTranspose(invProj));
-    DirectX::XMStoreFloat4x4(&mainPassCB.ViewProj, XMMatrixTranspose(viewProj));
-    DirectX::XMStoreFloat4x4(&mainPassCB.InvViewProj, XMMatrixTranspose(invViewProj));
+    XMStoreFloat4x4(&mainPassCB.View, XMMatrixTranspose(view));
+    XMStoreFloat4x4(&mainPassCB.InvView, XMMatrixTranspose(invView));
+    XMStoreFloat4x4(&mainPassCB.Proj, XMMatrixTranspose(proj));
+    XMStoreFloat4x4(&mainPassCB.InvProj, XMMatrixTranspose(invProj));
+    XMStoreFloat4x4(&mainPassCB.ViewProj, XMMatrixTranspose(viewProj));
+    XMStoreFloat4x4(&mainPassCB.InvViewProj, XMMatrixTranspose(invViewProj));
     mainPassCB.EyePosW = eyePos;
-    mainPassCB.RenderTargetSize = DirectX::XMFLOAT2((float)clientWidth, (float)clientHeight);
-    mainPassCB.InvRenderTargetSize = DirectX::XMFLOAT2(1.0f / clientWidth, 1.0f / clientHeight);
+    mainPassCB.RenderTargetSize = XMFLOAT2((float)clientWidth, (float)clientHeight);
+    mainPassCB.InvRenderTargetSize = XMFLOAT2(1.0f / clientWidth, 1.0f / clientHeight);
     mainPassCB.NearZ = 1.0f;
     mainPassCB.FarZ = 1000.0f;
     mainPassCB.TotalTime = gt.TotalTime();
     mainPassCB.DeltaTime = gt.DeltaTime();
     mainPassCB.AmbientLight = { 0.25f, 0.25f, 0.35f, 1.0f };
     mainPassCB.Lights[0].Direction = { 0.57735f, -0.57735f, 0.57735f };
-    mainPassCB.Lights[0].Strength = { 0.6f, 0.6f, 0.6f };
+    mainPassCB.Lights[0].Strength = { 0.9f, 0.9f, 0.9f };
     mainPassCB.Lights[1].Direction = { -0.57735f, -0.57735f, 0.57735f };
-    mainPassCB.Lights[1].Strength = { 0.3f, 0.3f, 0.3f };
+    mainPassCB.Lights[1].Strength = { 0.5f, 0.5f, 0.5f };
     mainPassCB.Lights[2].Direction = { 0.0f, -0.707f, -0.707f };
-    mainPassCB.Lights[2].Strength = { 0.15f, 0.15f, 0.15f };
+    mainPassCB.Lights[2].Strength = { 0.2f, 0.2f, 0.2f };
 
     auto currPassCB = currFrameResource->PassCB.get();
     currPassCB->CopyData(0, mainPassCB);
@@ -347,59 +346,14 @@ void TexWavesApp::UpdateWaves(const GameTimer& gt)
     wavesRItem->Geo->VertexBufferGPU = currWavesVB->Resource();
 }
 
-void TexWavesApp::BuildRootSignature()
-{
-    // texture table
-    auto texTable = CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
-
-    CD3DX12_ROOT_PARAMETER rootParams[4]{};
-    rootParams[0].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_PIXEL);
-    rootParams[1].InitAsConstantBufferView(0);
-    rootParams[2].InitAsConstantBufferView(1);
-    rootParams[3].InitAsConstantBufferView(2);
-
-    auto samplers = GetStaticSamplers();
-
-    CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc((UINT)std::size(rootParams), rootParams,
-        (UINT)samplers.size(), samplers.data(), D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
-
-    Microsoft::WRL::ComPtr<ID3DBlob> rootSigBlob = nullptr;
-    Microsoft::WRL::ComPtr<ID3DBlob> errorBlob = nullptr;
-    auto hr = D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
-        rootSigBlob.GetAddressOf(), errorBlob.GetAddressOf());
-    if (errorBlob)
-    {
-        auto outputString = std::string("Error regarding Root Signature Serialization :") + (char*)errorBlob->GetBufferPointer();
-        OutputDebugStringA(outputString.c_str());
-    }
-    ThrowIfFailed(hr);
-
-    ThrowIfFailed(pDevice->CreateRootSignature(0, rootSigBlob->GetBufferPointer(),
-        rootSigBlob->GetBufferSize(), IID_PPV_ARGS(&pRootSignature)));
-}
-
-void TexWavesApp::BuildShadersAndInputLayout()
-{
-    ThrowIfFailed(D3DReadFileToBlob(L"Shaders\\ShaderBins\\DefaultVS.cso", shaders["standardVS"].GetAddressOf()));
-    ThrowIfFailed(D3DReadFileToBlob(L"Shaders\\ShaderBins\\DefaultPS.cso", shaders["opaquePS"].GetAddressOf()));
-
-    inputLayout =
-    {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "NORMAL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-    };
-}
-
 void TexWavesApp::LoadTextures()
 {
     auto grassTex = std::make_unique<Texture>();
     grassTex->Name = "grassTex";
     grassTex->Filename = L"Textures/grass.dds";
-    DirectX::CreateDDSTextureFromFile12(pDevice.Get(), pCommandList.Get(),
-        grassTex->Filename.c_str(), grassTex->Resource,
-        grassTex->UploadHeap
-    );
+    ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(pDevice.Get(),
+        pCommandList.Get(), grassTex->Filename.c_str(),
+        grassTex->Resource, grassTex->UploadHeap));
 
     auto waterTex = std::make_unique<Texture>();
     waterTex->Name = "waterTex";
@@ -420,16 +374,60 @@ void TexWavesApp::LoadTextures()
     textures[fenceTex->Name] = std::move(fenceTex);
 }
 
+void TexWavesApp::BuildRootSignature()
+{
+    CD3DX12_DESCRIPTOR_RANGE texTable;
+    texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+
+    // Root parameter can be a table, root descriptor or root constants.
+    CD3DX12_ROOT_PARAMETER slotRootParameter[4];
+
+    // Perfomance TIP: Order from most frequent to least frequent.
+    slotRootParameter[0].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_PIXEL);
+    slotRootParameter[1].InitAsConstantBufferView(0);
+    slotRootParameter[2].InitAsConstantBufferView(1);
+    slotRootParameter[3].InitAsConstantBufferView(2);
+
+    auto staticSamplers = GetStaticSamplers();
+
+    // A root signature is an array of root parameters.
+    CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(4, slotRootParameter,
+        (UINT)staticSamplers.size(), staticSamplers.data(),
+        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+    // create a root signature with a single slot which points to a descriptor range consisting of a single constant buffer
+    Microsoft::WRL::ComPtr<ID3DBlob> serializedRootSig = nullptr;
+    Microsoft::WRL::ComPtr<ID3DBlob> errorBlob = nullptr;
+    HRESULT hr = D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
+        serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
+
+    if (errorBlob != nullptr)
+    {
+        ::OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+    }
+    ThrowIfFailed(hr);
+
+    ThrowIfFailed(pDevice->CreateRootSignature(
+        0,
+        serializedRootSig->GetBufferPointer(),
+        serializedRootSig->GetBufferSize(),
+        IID_PPV_ARGS(pRootSignature.GetAddressOf())));
+}
 
 void TexWavesApp::BuildDescriptorHeaps()
 {
-    // srv heap
-    D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc{};
-    srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-    srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+    //
+    // Create the SRV heap.
+    //
+    D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
     srvHeapDesc.NumDescriptors = 3;
+    srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+    srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     ThrowIfFailed(pDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&pSrvDescriptorHeap)));
 
+    //
+    // Fill out the heap with actual descriptors.
+    //
     CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(pSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
     auto grassTex = textures["grassTex"]->Resource;
@@ -455,6 +453,20 @@ void TexWavesApp::BuildDescriptorHeaps()
 
     srvDesc.Format = fenceTex->GetDesc().Format;
     pDevice->CreateShaderResourceView(fenceTex.Get(), &srvDesc, hDescriptor);
+}
+
+void TexWavesApp::BuildShadersAndInputLayout()
+{
+    ThrowIfFailed(D3DReadFileToBlob(L"Shaders\\ShaderBins\\DefaultVS.cso", shaders["standardVS"].GetAddressOf()));
+    ThrowIfFailed(D3DReadFileToBlob(L"Shaders\\ShaderBins\\DefaultPS.cso", shaders["opaquePS"].GetAddressOf()));
+
+
+    inputLayout =
+    {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+    };
 }
 
 void TexWavesApp::BuildLandGeometry()
@@ -690,7 +702,6 @@ void TexWavesApp::BuildMaterials()
 void TexWavesApp::BuildRenderItems()
 {
     using namespace DirectX;
-
     auto wavesRitem = std::make_unique<RenderItem>();
     wavesRitem->World = MathHelper::Identity4x4();
     XMStoreFloat4x4(&wavesRitem->TexTransform, XMMatrixScaling(5.0f, 5.0f, 1.0f));
