@@ -141,6 +141,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\BlendApp.cpp" />
     <ClCompile Include="src\Common\GeometryGenerator.cpp" />
     <ClCompile Include="src\Common\Waves.cpp" />
     <ClCompile Include="src\BoxApp.cpp" />
@@ -155,6 +156,7 @@
     <ClCompile Include="src\WinMain.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\BlendApp.h" />
     <ClInclude Include="src\TexWavesApp.h" />
     <ClInclude Include="src\Common\GeometryGenerator.h" />
     <ClInclude Include="src\Common\Waves.h" />
