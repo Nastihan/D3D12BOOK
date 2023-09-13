@@ -366,7 +366,7 @@ void BlendApp::LoadTextures()
 
     auto fenceTex = std::make_unique<Texture>();
     fenceTex->Name = "fenceTex";
-    fenceTex->Filename = L"Textures/WoodCrate01.dds";
+    fenceTex->Filename = L"Textures/WireFence.dds";
     ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(pDevice.Get(),
         pCommandList.Get(), fenceTex->Filename.c_str(),
         fenceTex->Resource, fenceTex->UploadHeap));

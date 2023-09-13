@@ -1,5 +1,5 @@
 #include <Windows.h>
-#include "TexWavesApp.h"
+#include "BlendApp.h"
 
 const int gNumFrameResources = 3;
 
@@ -11,7 +11,7 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
 	try
 	{
-		TexWavesApp app(hInstance);
+		BlendApp app(hInstance);
 		if (!app.Initialize())
 		{
 			return 0;
