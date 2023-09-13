@@ -69,6 +69,8 @@ float4 main(VertexOut pin) : SV_Target
 {
     float4 diffuseAlbedo = gDiffuseMap.Sample(gsamAnisotropicWrap, pin.TexC) * gDiffuseAlbedo;
 	
+    clip(diffuseAlbedo.a < 0.1f ? -1.0f : 1.0f);
+    
     // Interpolating normal can unnormalize it, so renormalize it.
     pin.NormalW = normalize(pin.NormalW);
 
