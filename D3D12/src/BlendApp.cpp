@@ -85,7 +85,7 @@ void BlendApp::Draw(const GameTimer& gt)
 {
     auto cmdListAlloc = currFrameResource->pCmdListAlloc;
     ThrowIfFailed(cmdListAlloc->Reset());
-    ThrowIfFailed(pCommandList->Reset(cmdListAlloc.Get(), PSOs["opaque"].Get()));
+    ThrowIfFailed(pCommandList->Reset(cmdListAlloc.Get(), nullptr));
 
     pCommandList->RSSetViewports(1, &screenViewport);
     pCommandList->RSSetScissorRects(1, &scissorRect);
@@ -110,7 +110,12 @@ void BlendApp::Draw(const GameTimer& gt)
     auto passCB = currFrameResource->PassCB->Resource();
     pCommandList->SetGraphicsRootConstantBufferView(2, passCB->GetGPUVirtualAddress());
 
+
+    pCommandList->SetPipelineState(PSOs["opaque"].Get());
     DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Opaque]);
+
+    pCommandList->SetPipelineState(PSOs["alphaZero"].Get());
+    DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::AlphaZero]);
 
     pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
         CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT
@@ -656,6 +661,11 @@ void BlendApp::BuildPSOs()
     opaquePsoDesc.DSVFormat = depthStencilFormat;
     ThrowIfFailed(pDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&PSOs["opaque"])));
 
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC alphaZeroPsoDesc = opaquePsoDesc;
+    alphaZeroPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+
+    ThrowIfFailed(pDevice->CreateGraphicsPipelineState(&alphaZeroPsoDesc, IID_PPV_ARGS(&PSOs["alphaZero"])));
+
 }
 
 void BlendApp::BuildFrameResources()
@@ -742,7 +752,7 @@ void BlendApp::BuildRenderItems()
     boxRitem->StartIndexLocation = boxRitem->Geo->DrawArgs["box"].StartIndexLocation;
     boxRitem->BaseVertexLocation = boxRitem->Geo->DrawArgs["box"].BaseVertexLocation;
 
-    rItemLayer[(int)RenderLayer::Opaque].push_back(boxRitem.get());
+    rItemLayer[(int)RenderLayer::AlphaZero].push_back(boxRitem.get());
 
     allRItems.push_back(std::move(wavesRitem));
     allRItems.push_back(std::move(gridRitem));
