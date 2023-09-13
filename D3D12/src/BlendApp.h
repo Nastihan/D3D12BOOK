@@ -30,7 +30,8 @@ struct RenderItem
 enum class RenderLayer : int
 {
 	Opaque = 0,
-	AlphaZero = 1,
+	Transparent = 1,
+	AlphaZero = 2,
 	Count
 };
 

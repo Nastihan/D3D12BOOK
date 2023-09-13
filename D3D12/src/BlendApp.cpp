@@ -660,10 +660,31 @@ void BlendApp::BuildPSOs()
     opaquePsoDesc.SampleDesc.Quality = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
     opaquePsoDesc.DSVFormat = depthStencilFormat;
     ThrowIfFailed(pDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&PSOs["opaque"])));
+    //
+    // PSO for transparent objects
+    //
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC transparentPsoDesc = opaquePsoDesc;
+    D3D12_RENDER_TARGET_BLEND_DESC transparentBlendDesc{};
+    transparentBlendDesc.BlendEnable = true;
+    transparentBlendDesc.LogicOpEnable = false;
+    transparentBlendDesc.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+    transparentBlendDesc.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+    transparentBlendDesc.BlendOp = D3D12_BLEND_OP_ADD;
+    transparentBlendDesc.SrcBlendAlpha = D3D12_BLEND_ONE;
+    transparentBlendDesc.DestBlendAlpha = D3D12_BLEND_ZERO;
+    transparentBlendDesc.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+    transparentBlendDesc.LogicOp = D3D12_LOGIC_OP_NOOP;
+    transparentBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 
+    transparentPsoDesc.BlendState.RenderTarget[0] = transparentBlendDesc;
+
+    ThrowIfFailed(pDevice->CreateGraphicsPipelineState(&transparentPsoDesc, IID_PPV_ARGS(&PSOs["transparent"])));
+    
+    //
+    // PSO for alphaZero objects
+    //
     D3D12_GRAPHICS_PIPELINE_STATE_DESC alphaZeroPsoDesc = opaquePsoDesc;
     alphaZeroPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-
     ThrowIfFailed(pDevice->CreateGraphicsPipelineState(&alphaZeroPsoDesc, IID_PPV_ARGS(&PSOs["alphaZero"])));
 
 }
