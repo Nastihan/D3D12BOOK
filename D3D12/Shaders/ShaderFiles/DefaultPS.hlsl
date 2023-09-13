@@ -36,6 +36,11 @@ cbuffer cbPass : register(b1)
     float gTotalTime;
     float gDeltaTime;
     float4 gAmbientLight;
+    
+    float4 gFogColor;
+    float gFogStart;
+    float gFogRange;
+    float2 cbPerObjectPad2;
 
     Light gLights[MaxLights];
 };
@@ -75,7 +80,9 @@ float4 main(VertexOut pin) : SV_Target
     pin.NormalW = normalize(pin.NormalW);
 
     // Vector from point being lit to eye. 
-    float3 toEyeW = normalize(gEyePosW - pin.PosW);
+    float3 toEyeW = gEyePosW - pin.PosW;
+    float distToEye = length(toEyeW);
+    toEyeW /= distToEye; // normalize
 
     // Light terms.
     float4 ambient = gAmbientLight * diffuseAlbedo;
@@ -87,6 +94,9 @@ float4 main(VertexOut pin) : SV_Target
         pin.NormalW, toEyeW, shadowFactor);
 
     float4 litColor = ambient + directLight;
+    
+    float fogAmount = saturate((distToEye - gFogStart) / gFogRange);
+    litColor = lerp(litColor, gFogColor, fogAmount);
 
     // Common convention to take alpha from diffuse albedo.
     litColor.a = diffuseAlbedo.a;
