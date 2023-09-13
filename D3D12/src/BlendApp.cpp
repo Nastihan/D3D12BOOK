@@ -117,6 +117,9 @@ void BlendApp::Draw(const GameTimer& gt)
     pCommandList->SetPipelineState(PSOs["alphaZero"].Get());
     DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::AlphaZero]);
 
+    pCommandList->SetPipelineState(PSOs["transparent"].Get());
+    DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Transparent]);
+
     pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
         CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT
     ));
@@ -715,7 +718,7 @@ void BlendApp::BuildMaterials()
     water->Name = "water";
     water->MatCBIndex = 1;
     water->DiffuseSrvHeapIndex = 1;
-    water->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    water->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 0.5f);
     water->FresnelR0 = XMFLOAT3(0.2f, 0.2f, 0.2f);
     water->Roughness = 0.0f;
 
@@ -748,7 +751,7 @@ void BlendApp::BuildRenderItems()
 
     wavesRItem = wavesRitem.get();
 
-    rItemLayer[(int)RenderLayer::Opaque].push_back(wavesRitem.get());
+    rItemLayer[(int)RenderLayer::Transparent].push_back(wavesRitem.get());
 
     auto gridRitem = std::make_unique<RenderItem>();
     gridRitem->World = MathHelper::Identity4x4();
