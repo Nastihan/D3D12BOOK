@@ -59,12 +59,6 @@
     <ClCompile Include="src\Common\Waves.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="src\TexWavesApp.cpp">
-      <Filter>Source Files\Apps</Filter>
-    </ClCompile>
-    <ClCompile Include="src\BlendApp.cpp">
-      <Filter>Source Files\Apps</Filter>
-    </ClCompile>
     <ClCompile Include="src\StencilApp.cpp">
       <Filter>Source Files\Apps</Filter>
     </ClCompile>
@@ -105,9 +99,6 @@
     </ClInclude>
     <ClInclude Include="src\FrameResource.h">
       <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\TexWavesApp.h">
-      <Filter>Header Files\Apps</Filter>
     </ClInclude>
     <ClInclude Include="src\BlendApp.h">
       <Filter>Header Files\Apps</Filter>

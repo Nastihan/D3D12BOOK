@@ -1,5 +1,5 @@
 #include <Windows.h>
-#include "BlendApp.h"
+#include "StencilApp.h"
 
 const int gNumFrameResources = 3;
 
@@ -11,7 +11,7 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
 	try
 	{
-		BlendApp app(hInstance);
+		StencilApp app(hInstance);
 		if (!app.Initialize())
 		{
 			return 0;

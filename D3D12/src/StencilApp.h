@@ -60,15 +60,12 @@ private:
 	void UpdateObjectCBs(const GameTimer& gt);
 	void UpdateMaterialCBs(const GameTimer& gt);
 	void UpdateMainPassCB(const GameTimer& gt);
-	void UpdateWaves(const GameTimer& gt);
 
 	void LoadTextures();
 	void BuildRootSignature();
 	void BuildDescriptorHeaps();
 	void BuildShadersAndInputLayout();
-	void BuildLandGeometry();
-	void BuildWavesGeometry();
-	void BuildBoxGeometry();
+
 	void BuildPSOs();
 	void BuildFrameResources();
 	void BuildMaterials();
@@ -76,9 +73,6 @@ private:
 	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
-
-	float GetHillsHeight(float x, float z)const;
-	DirectX::XMFLOAT3 GetHillsNormal(float x, float z)const;
 
 private:
 	std::vector<std::unique_ptr<FrameResource>> frameResources;
@@ -99,14 +93,12 @@ private:
 
 	std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout;
 
-	RenderItem* wavesRItem = nullptr;
 
 	// all of the render items
 	std::vector<std::unique_ptr<RenderItem>> allRItems;
 	// render items divided by PSO
 	std::vector<RenderItem*> rItemLayer[(int)RenderLayer::Count];
 
-	std::unique_ptr<Waves> waves;
 
 	PassConstants mainPassCB;
 
