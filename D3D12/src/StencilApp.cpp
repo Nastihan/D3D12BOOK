@@ -29,6 +29,8 @@ bool StencilApp::Initialize()
     BuildRootSignature();
     BuildDescriptorHeaps();
     BuildShadersAndInputLayout();
+    BuildRoomGeometry();
+    BuildSkullGeometry();
     BuildMaterials();
     BuildRenderItems();
     BuildFrameResources();
@@ -103,6 +105,9 @@ void StencilApp::Draw(const GameTimer& gt)
 
     auto passCB = currFrameResource->PassCB->Resource();
     pCommandList->SetGraphicsRootConstantBufferView(2, passCB->GetGPUVirtualAddress());
+
+    pCommandList->SetPipelineState(PSOs["opaque"].Get());
+    DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Opaque]);
 
     pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
         CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT
@@ -190,26 +195,7 @@ void StencilApp::UpdateCamera(const GameTimer& gt)
 
 void StencilApp::AnimateMaterials(const GameTimer& gt)
 {
-    // Scroll the water material texture coordinates.
-    auto waterMat = materials["water"].get();
-
-    float& tu = waterMat->MatTransform(3, 0);
-    float& tv = waterMat->MatTransform(3, 1);
-
-    tu += 0.1f * gt.DeltaTime();
-    tv += 0.02f * gt.DeltaTime();
-
-    if (tu >= 1.0f)
-        tu -= 1.0f;
-
-    if (tv >= 1.0f)
-        tv -= 1.0f;
-
-    waterMat->MatTransform(3, 0) = tu;
-    waterMat->MatTransform(3, 1) = tv;
-
-    // Material has changed, so need to update cbuffer.
-    waterMat->NumFramesDirty = gNumFrameResources;
+   
 }
 
 void StencilApp::UpdateObjectCBs(const GameTimer& gt)
@@ -300,33 +286,40 @@ void StencilApp::UpdateMainPassCB(const GameTimer& gt)
     currPassCB->CopyData(0, mainPassCB);
 }
 
-
 void StencilApp::LoadTextures()
 {
-    auto grassTex = std::make_unique<Texture>();
-    grassTex->Name = "grassTex";
-    grassTex->Filename = L"Textures/grass.dds";
+    auto bricksTex = std::make_unique<Texture>();
+    bricksTex->Name = "bricksTex";
+    bricksTex->Filename = L"Textures/bricks3.dds";
     ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(pDevice.Get(),
-        pCommandList.Get(), grassTex->Filename.c_str(),
-        grassTex->Resource, grassTex->UploadHeap));
+        pCommandList.Get(), bricksTex->Filename.c_str(),
+        bricksTex->Resource, bricksTex->UploadHeap));
 
-    auto waterTex = std::make_unique<Texture>();
-    waterTex->Name = "waterTex";
-    waterTex->Filename = L"Textures/water1.dds";
+    auto checkboardTex = std::make_unique<Texture>();
+    checkboardTex->Name = "checkboardTex";
+    checkboardTex->Filename = L"Textures/checkboard.dds";
     ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(pDevice.Get(),
-        pCommandList.Get(), waterTex->Filename.c_str(),
-        waterTex->Resource, waterTex->UploadHeap));
+        pCommandList.Get(), checkboardTex->Filename.c_str(),
+        checkboardTex->Resource, checkboardTex->UploadHeap));
 
-    auto fenceTex = std::make_unique<Texture>();
-    fenceTex->Name = "fenceTex";
-    fenceTex->Filename = L"Textures/WireFence.dds";
+    auto iceTex = std::make_unique<Texture>();
+    iceTex->Name = "iceTex";
+    iceTex->Filename = L"Textures/ice.dds";
     ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(pDevice.Get(),
-        pCommandList.Get(), fenceTex->Filename.c_str(),
-        fenceTex->Resource, fenceTex->UploadHeap));
+        pCommandList.Get(), iceTex->Filename.c_str(),
+        iceTex->Resource, iceTex->UploadHeap));
 
-    textures[grassTex->Name] = std::move(grassTex);
-    textures[waterTex->Name] = std::move(waterTex);
-    textures[fenceTex->Name] = std::move(fenceTex);
+    auto white1x1Tex = std::make_unique<Texture>();
+    white1x1Tex->Name = "white1x1Tex";
+    white1x1Tex->Filename = L"Textures/white1x1.dds";
+    ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(pDevice.Get(),
+        pCommandList.Get(), white1x1Tex->Filename.c_str(),
+        white1x1Tex->Resource, white1x1Tex->UploadHeap));
+
+    textures[bricksTex->Name] = std::move(bricksTex);
+    textures[checkboardTex->Name] = std::move(checkboardTex);
+    textures[iceTex->Name] = std::move(iceTex);
+    textures[white1x1Tex->Name] = std::move(white1x1Tex);
 }
 
 void StencilApp::BuildRootSignature()
@@ -335,7 +328,7 @@ void StencilApp::BuildRootSignature()
     texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
 
     // Root parameter can be a table, root descriptor or root constants.
-    CD3DX12_ROOT_PARAMETER slotRootParameter[4];
+    CD3DX12_ROOT_PARAMETER slotRootParameter[4]{};
 
     // Perfomance TIP: Order from most frequent to least frequent.
     slotRootParameter[0].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_PIXEL);
@@ -375,7 +368,7 @@ void StencilApp::BuildDescriptorHeaps()
     // Create the SRV heap.
     //
     D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-    srvHeapDesc.NumDescriptors = 3;
+    srvHeapDesc.NumDescriptors = 4;
     srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
     srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     ThrowIfFailed(pDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&pSrvDescriptorHeap)));
@@ -385,29 +378,36 @@ void StencilApp::BuildDescriptorHeaps()
     //
     CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(pSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
-    auto grassTex = textures["grassTex"]->Resource;
-    auto waterTex = textures["waterTex"]->Resource;
-    auto fenceTex = textures["fenceTex"]->Resource;
+    auto bricksTex = textures["bricksTex"]->Resource;
+    auto checkboardTex = textures["checkboardTex"]->Resource;
+    auto iceTex = textures["iceTex"]->Resource;
+    auto white1x1Tex = textures["white1x1Tex"]->Resource;
 
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-    srvDesc.Format = grassTex->GetDesc().Format;
+    srvDesc.Format = bricksTex->GetDesc().Format;
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
     srvDesc.Texture2D.MostDetailedMip = 0;
     srvDesc.Texture2D.MipLevels = -1;
-    pDevice->CreateShaderResourceView(grassTex.Get(), &srvDesc, hDescriptor);
+    pDevice->CreateShaderResourceView(bricksTex.Get(), &srvDesc, hDescriptor);
 
     // next descriptor
     hDescriptor.Offset(1, cbvSrvDescriptorSize);
 
-    srvDesc.Format = waterTex->GetDesc().Format;
-    pDevice->CreateShaderResourceView(waterTex.Get(), &srvDesc, hDescriptor);
+    srvDesc.Format = checkboardTex->GetDesc().Format;
+    pDevice->CreateShaderResourceView(checkboardTex.Get(), &srvDesc, hDescriptor);
 
     // next descriptor
     hDescriptor.Offset(1, cbvSrvDescriptorSize);
 
-    srvDesc.Format = fenceTex->GetDesc().Format;
-    pDevice->CreateShaderResourceView(fenceTex.Get(), &srvDesc, hDescriptor);
+    srvDesc.Format = iceTex->GetDesc().Format;
+    pDevice->CreateShaderResourceView(iceTex.Get(), &srvDesc, hDescriptor);
+
+    // next descriptor
+    hDescriptor.Offset(1, cbvSrvDescriptorSize);
+
+    srvDesc.Format = white1x1Tex->GetDesc().Format;
+    pDevice->CreateShaderResourceView(white1x1Tex.Get(), &srvDesc, hDescriptor);
 }
 
 void StencilApp::BuildShadersAndInputLayout()
@@ -422,6 +422,197 @@ void StencilApp::BuildShadersAndInputLayout()
         { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
         { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
     };
+}
+
+void StencilApp::BuildRoomGeometry()
+{
+    // Create and specify geometry.  For this sample we draw a floor
+// and a wall with a mirror on it.  We put the floor, wall, and
+// mirror geometry in one vertex buffer.
+//
+//   |--------------|
+//   |              |
+//   |----|----|----|
+//   |Wall|Mirr|Wall|
+//   |    | or |    |
+//   /--------------/
+//  /   Floor      /
+// /--------------/
+
+    std::array<Vertex, 20> vertices =
+    {
+        // Floor: Observe we tile texture coordinates.
+        Vertex(-3.5f, 0.0f, -10.0f, 0.0f, 1.0f, 0.0f, 0.0f, 4.0f), // 0 
+        Vertex(-3.5f, 0.0f,   0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f),
+        Vertex(7.5f, 0.0f,   0.0f, 0.0f, 1.0f, 0.0f, 4.0f, 0.0f),
+        Vertex(7.5f, 0.0f, -10.0f, 0.0f, 1.0f, 0.0f, 4.0f, 4.0f),
+
+        // Wall: Observe we tile texture coordinates, and that we
+        // leave a gap in the middle for the mirror.
+        Vertex(-3.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 2.0f), // 4
+        Vertex(-3.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f),
+        Vertex(-2.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.5f, 0.0f),
+        Vertex(-2.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.5f, 2.0f),
+
+        Vertex(2.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 2.0f), // 8 
+        Vertex(2.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f),
+        Vertex(7.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 2.0f, 0.0f),
+        Vertex(7.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 2.0f, 2.0f),
+
+        Vertex(-3.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f), // 12
+        Vertex(-3.5f, 6.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f),
+        Vertex(7.5f, 6.0f, 0.0f, 0.0f, 0.0f, -1.0f, 6.0f, 0.0f),
+        Vertex(7.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 6.0f, 1.0f),
+
+        // Mirror
+        Vertex(-2.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f), // 16
+        Vertex(-2.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f),
+        Vertex(2.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f),
+        Vertex(2.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 1.0f, 1.0f)
+    };
+
+    std::array<std::int16_t, 30> indices =
+    {
+        // Floor
+        0, 1, 2,
+        0, 2, 3,
+
+        // Walls
+        4, 5, 6,
+        4, 6, 7,
+
+        8, 9, 10,
+        8, 10, 11,
+
+        12, 13, 14,
+        12, 14, 15,
+
+        // Mirror
+        16, 17, 18,
+        16, 18, 19
+    };
+
+    SubmeshGeometry floorSubmesh;
+    floorSubmesh.IndexCount = 6;
+    floorSubmesh.StartIndexLocation = 0;
+    floorSubmesh.BaseVertexLocation = 0;
+
+    SubmeshGeometry wallSubmesh;
+    wallSubmesh.IndexCount = 18;
+    wallSubmesh.StartIndexLocation = 6;
+    wallSubmesh.BaseVertexLocation = 0;
+
+    SubmeshGeometry mirrorSubmesh;
+    mirrorSubmesh.IndexCount = 6;
+    mirrorSubmesh.StartIndexLocation = 24;
+    mirrorSubmesh.BaseVertexLocation = 0;
+
+    const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
+    const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
+
+    auto geo = std::make_unique<MeshGeometry>();
+    geo->Name = "roomGeo";
+
+    ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->VertexBufferCPU));
+    CopyMemory(geo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
+
+    ThrowIfFailed(D3DCreateBlob(ibByteSize, &geo->IndexBufferCPU));
+    CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
+
+    geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(pDevice.Get(),
+        pCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
+
+    geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(pDevice.Get(),
+        pCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
+
+    geo->VertexByteStride = sizeof(Vertex);
+    geo->VertexBufferByteSize = vbByteSize;
+    geo->IndexFormat = DXGI_FORMAT_R16_UINT;
+    geo->IndexBufferByteSize = ibByteSize;
+
+    geo->DrawArgs["floor"] = floorSubmesh;
+    geo->DrawArgs["wall"] = wallSubmesh;
+    geo->DrawArgs["mirror"] = mirrorSubmesh;
+
+    geometries[geo->Name] = std::move(geo);
+}
+
+void StencilApp::BuildSkullGeometry()
+{
+    std::ifstream fin("Models/skull.txt");
+
+    if (!fin)
+    {
+        MessageBox(0, L"Models/skull.txt not found.", 0, 0);
+        return;
+    }
+
+    UINT vcount = 0;
+    UINT tcount = 0;
+    std::string ignore;
+
+    fin >> ignore >> vcount;
+    fin >> ignore >> tcount;
+    fin >> ignore >> ignore >> ignore >> ignore;
+
+    std::vector<Vertex> vertices(vcount);
+    for (UINT i = 0; i < vcount; ++i)
+    {
+        fin >> vertices[i].Pos.x >> vertices[i].Pos.y >> vertices[i].Pos.z;
+        fin >> vertices[i].Normal.x >> vertices[i].Normal.y >> vertices[i].Normal.z;
+
+        // Model does not have texture coordinates, so just zero them out.
+        vertices[i].TexC = { 0.0f, 0.0f };
+    }
+
+    fin >> ignore;
+    fin >> ignore;
+    fin >> ignore;
+
+    std::vector<std::int32_t> indices(3 * tcount);
+    for (UINT i = 0; i < tcount; ++i)
+    {
+        fin >> indices[i * 3 + 0] >> indices[i * 3 + 1] >> indices[i * 3 + 2];
+    }
+
+    fin.close();
+
+    //
+    // Pack the indices of all the meshes into one index buffer.
+    //
+
+    const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
+
+    const UINT ibByteSize = (UINT)indices.size() * sizeof(std::int32_t);
+
+    auto geo = std::make_unique<MeshGeometry>();
+    geo->Name = "skullGeo";
+
+    ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->VertexBufferCPU));
+    CopyMemory(geo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
+
+    ThrowIfFailed(D3DCreateBlob(ibByteSize, &geo->IndexBufferCPU));
+    CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
+
+    geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(pDevice.Get(),
+        pCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
+
+    geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(pDevice.Get(),
+        pCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
+
+    geo->VertexByteStride = sizeof(Vertex);
+    geo->VertexBufferByteSize = vbByteSize;
+    geo->IndexFormat = DXGI_FORMAT_R32_UINT;
+    geo->IndexBufferByteSize = ibByteSize;
+
+    SubmeshGeometry submesh;
+    submesh.IndexCount = (UINT)indices.size();
+    submesh.StartIndexLocation = 0;
+    submesh.BaseVertexLocation = 0;
+
+    geo->DrawArgs["skull"] = submesh;
+
+    geometries[geo->Name] = std::move(geo);
 }
 
 void StencilApp::BuildPSOs()
@@ -488,13 +679,97 @@ void StencilApp::BuildFrameResources()
 void StencilApp::BuildMaterials()
 {
     using namespace DirectX;
-    
+
+    auto bricks = std::make_unique<Material>();
+    bricks->Name = "bricks";
+    bricks->MatCBIndex = 0;
+    bricks->DiffuseSrvHeapIndex = 0;
+    bricks->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    bricks->FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05f);
+    bricks->Roughness = 0.25f;
+
+    auto checkertile = std::make_unique<Material>();
+    checkertile->Name = "checkertile";
+    checkertile->MatCBIndex = 1;
+    checkertile->DiffuseSrvHeapIndex = 1;
+    checkertile->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    checkertile->FresnelR0 = XMFLOAT3(0.07f, 0.07f, 0.07f);
+    checkertile->Roughness = 0.3f;
+
+    auto icemirror = std::make_unique<Material>();
+    icemirror->Name = "icemirror";
+    icemirror->MatCBIndex = 2;
+    icemirror->DiffuseSrvHeapIndex = 2;
+    icemirror->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 0.3f);
+    icemirror->FresnelR0 = XMFLOAT3(0.1f, 0.1f, 0.1f);
+    icemirror->Roughness = 0.5f;
+
+    auto skullMat = std::make_unique<Material>();
+    skullMat->Name = "skullMat";
+    skullMat->MatCBIndex = 3;
+    skullMat->DiffuseSrvHeapIndex = 3;
+    skullMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    skullMat->FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05f);
+    skullMat->Roughness = 0.3f;
+
+    auto shadowMat = std::make_unique<Material>();
+    shadowMat->Name = "shadowMat";
+    shadowMat->MatCBIndex = 4;
+    shadowMat->DiffuseSrvHeapIndex = 3;
+    shadowMat->DiffuseAlbedo = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.5f);
+    shadowMat->FresnelR0 = XMFLOAT3(0.001f, 0.001f, 0.001f);
+    shadowMat->Roughness = 0.0f;
+
+    materials["bricks"] = std::move(bricks);
+    materials["checkertile"] = std::move(checkertile);
+    materials["icemirror"] = std::move(icemirror);
+    materials["skullMat"] = std::move(skullMat);
+    materials["shadowMat"] = std::move(shadowMat);
 }
 
 void StencilApp::BuildRenderItems()
 {
     using namespace DirectX;
+    auto floorRitem = std::make_unique<RenderItem>();
+    floorRitem->World = MathHelper::Identity4x4();
+    floorRitem->TexTransform = MathHelper::Identity4x4();
+    floorRitem->ObjCBIndex = 0;
+    floorRitem->Mat = materials["checkertile"].get();
+    floorRitem->Geo = geometries["roomGeo"].get();
+    floorRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+    floorRitem->IndexCount = floorRitem->Geo->DrawArgs["floor"].IndexCount;
+    floorRitem->StartIndexLocation = floorRitem->Geo->DrawArgs["floor"].StartIndexLocation;
+    floorRitem->BaseVertexLocation = floorRitem->Geo->DrawArgs["floor"].BaseVertexLocation;
+    rItemLayer[(int)RenderLayer::Opaque].push_back(floorRitem.get());
 
+    auto wallsRitem = std::make_unique<RenderItem>();
+    wallsRitem->World = MathHelper::Identity4x4();
+    wallsRitem->TexTransform = MathHelper::Identity4x4();
+    wallsRitem->ObjCBIndex = 1;
+    wallsRitem->Mat = materials["bricks"].get();
+    wallsRitem->Geo = geometries["roomGeo"].get();
+    wallsRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+    wallsRitem->IndexCount = wallsRitem->Geo->DrawArgs["wall"].IndexCount;
+    wallsRitem->StartIndexLocation = wallsRitem->Geo->DrawArgs["wall"].StartIndexLocation;
+    wallsRitem->BaseVertexLocation = wallsRitem->Geo->DrawArgs["wall"].BaseVertexLocation;
+    rItemLayer[(int)RenderLayer::Opaque].push_back(wallsRitem.get());
+
+    auto skullRitem = std::make_unique<RenderItem>();
+    skullRitem->World = MathHelper::Identity4x4();
+    skullRitem->TexTransform = MathHelper::Identity4x4();
+    skullRitem->ObjCBIndex = 2;
+    skullRitem->Mat = materials["skullMat"].get();
+    skullRitem->Geo = geometries["skullGeo"].get();
+    skullRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+    skullRitem->IndexCount = skullRitem->Geo->DrawArgs["skull"].IndexCount;
+    skullRitem->StartIndexLocation = skullRitem->Geo->DrawArgs["skull"].StartIndexLocation;
+    skullRitem->BaseVertexLocation = skullRitem->Geo->DrawArgs["skull"].BaseVertexLocation;
+    mSkullRitem = skullRitem.get();
+    rItemLayer[(int)RenderLayer::Opaque].push_back(skullRitem.get());
+    
+    allRItems.push_back(std::move(floorRitem));
+    allRItems.push_back(std::move(wallsRitem));
+    allRItems.push_back(std::move(skullRitem));
     
 }
 

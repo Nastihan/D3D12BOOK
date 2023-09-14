@@ -30,8 +30,6 @@ struct RenderItem
 enum class RenderLayer : int
 {
 	Opaque = 0,
-	Transparent = 1,
-	AlphaZero = 2,
 	Count
 };
 
@@ -65,7 +63,8 @@ private:
 	void BuildRootSignature();
 	void BuildDescriptorHeaps();
 	void BuildShadersAndInputLayout();
-
+	void BuildRoomGeometry();
+	void BuildSkullGeometry();
 	void BuildPSOs();
 	void BuildFrameResources();
 	void BuildMaterials();
@@ -93,6 +92,10 @@ private:
 
 	std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout;
 
+	// Cache render items of interest.
+	RenderItem* mSkullRitem = nullptr;
+	RenderItem* mReflectedSkullRitem = nullptr;
+	RenderItem* mShadowedSkullRitem = nullptr;
 
 	// all of the render items
 	std::vector<std::unique_ptr<RenderItem>> allRItems;
