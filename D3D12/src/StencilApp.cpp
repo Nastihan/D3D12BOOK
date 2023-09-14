@@ -109,6 +109,10 @@ void StencilApp::Draw(const GameTimer& gt)
     pCommandList->SetPipelineState(PSOs["opaque"].Get());
     DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Opaque]);
 
+    pCommandList->OMSetStencilRef(1);
+    pCommandList->SetPipelineState(PSOs["mask"].Get());
+    DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Mask]);
+
     pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
         CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT
     ));
@@ -653,17 +657,24 @@ void StencilApp::BuildPSOs()
     transparentBlendDesc.BlendOpAlpha = D3D12_BLEND_OP_ADD;
     transparentBlendDesc.LogicOp = D3D12_LOGIC_OP_NOOP;
     transparentBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-
     transparentPsoDesc.BlendState.RenderTarget[0] = transparentBlendDesc;
-
     ThrowIfFailed(pDevice->CreateGraphicsPipelineState(&transparentPsoDesc, IID_PPV_ARGS(&PSOs["transparent"])));
-
     //
-    // PSO for alphaZero objects
+    // PSO for mirror mask
     //
-    D3D12_GRAPHICS_PIPELINE_STATE_DESC alphaZeroPsoDesc = opaquePsoDesc;
-    alphaZeroPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-    ThrowIfFailed(pDevice->CreateGraphicsPipelineState(&alphaZeroPsoDesc, IID_PPV_ARGS(&PSOs["alphaZero"])));
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC maskPsoDesc = opaquePsoDesc;
+    maskPsoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = 0;
+    maskPsoDesc.DepthStencilState.DepthEnable = true;
+    maskPsoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+    maskPsoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+    maskPsoDesc.DepthStencilState.StencilEnable = true;
+    maskPsoDesc.DepthStencilState.StencilReadMask = 0xff;
+    maskPsoDesc.DepthStencilState.StencilWriteMask = 0xff;
+    maskPsoDesc.DepthStencilState.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+    maskPsoDesc.DepthStencilState.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+    maskPsoDesc.DepthStencilState.FrontFace.StencilPassOp = D3D12_STENCIL_OP_REPLACE;
+    maskPsoDesc.DepthStencilState.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+    ThrowIfFailed(pDevice->CreateGraphicsPipelineState(&maskPsoDesc, IID_PPV_ARGS(&PSOs["mask"])));
 
 }
 
@@ -766,10 +777,23 @@ void StencilApp::BuildRenderItems()
     skullRitem->BaseVertexLocation = skullRitem->Geo->DrawArgs["skull"].BaseVertexLocation;
     mSkullRitem = skullRitem.get();
     rItemLayer[(int)RenderLayer::Opaque].push_back(skullRitem.get());
+
+    auto mirrorRitem = std::make_unique<RenderItem>();
+    mirrorRitem->World = MathHelper::Identity4x4();
+    mirrorRitem->TexTransform = MathHelper::Identity4x4();
+    mirrorRitem->ObjCBIndex = 3;
+    mirrorRitem->Mat = materials["icemirror"].get();
+    mirrorRitem->Geo = geometries["roomGeo"].get();
+    mirrorRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+    mirrorRitem->IndexCount = mirrorRitem->Geo->DrawArgs["mirror"].IndexCount;
+    mirrorRitem->StartIndexLocation = mirrorRitem->Geo->DrawArgs["mirror"].StartIndexLocation;
+    mirrorRitem->BaseVertexLocation = mirrorRitem->Geo->DrawArgs["mirror"].BaseVertexLocation;
+    rItemLayer[(int)RenderLayer::Mask].push_back(mirrorRitem.get());
     
     allRItems.push_back(std::move(floorRitem));
     allRItems.push_back(std::move(wallsRitem));
     allRItems.push_back(std::move(skullRitem));
+    allRItems.push_back(std::move(mirrorRitem));
     
 }
 
