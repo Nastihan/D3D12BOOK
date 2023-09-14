@@ -65,6 +65,9 @@
     <ClCompile Include="src\BlendApp.cpp">
       <Filter>Source Files\Apps</Filter>
     </ClCompile>
+    <ClCompile Include="src\StencilApp.cpp">
+      <Filter>Source Files\Apps</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Common\GameTimer.h">
@@ -107,6 +110,9 @@
       <Filter>Header Files\Apps</Filter>
     </ClInclude>
     <ClInclude Include="src\BlendApp.h">
+      <Filter>Header Files\Apps</Filter>
+    </ClInclude>
+    <ClInclude Include="src\StencilApp.h">
       <Filter>Header Files\Apps</Filter>
     </ClInclude>
   </ItemGroup>
