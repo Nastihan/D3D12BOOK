@@ -59,6 +59,7 @@ private:
 	void UpdateObjectCBs(const GameTimer& gt);
 	void UpdateMaterialCBs(const GameTimer& gt);
 	void UpdateMainPassCB(const GameTimer& gt);
+	void UpdateReflectedPassCB(const GameTimer& gt);
 
 	void LoadTextures();
 	void BuildRootSignature();
@@ -105,14 +106,17 @@ private:
 
 
 	PassConstants mainPassCB;
+	PassConstants reflectionPassCB;
+
+	DirectX::XMFLOAT3 skullTranslation = { 0.0f, 1.0f, -5.0f };
 
 	DirectX::XMFLOAT3 eyePos = { 0.0f, 0.0f, 0.0f };
 	DirectX::XMFLOAT4X4 view = MathHelper::Identity4x4();
 	DirectX::XMFLOAT4X4 proj = MathHelper::Identity4x4();
 
-	float theta = 1.5f * DirectX::XM_PI;
-	float phi = DirectX::XM_PIDIV2 - 0.1f;
-	float radius = 50.0f;
+	float theta = 1.5f * DirectX::XM_PI - 0.3f;
+	float phi = DirectX::XM_PIDIV2 - 0.4f;
+	float radius = 20.0f;
 
 	POINT lastMousePos;
 };

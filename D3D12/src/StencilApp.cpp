@@ -75,6 +75,7 @@ void StencilApp::Update(const GameTimer& gt)
     UpdateObjectCBs(gt);
     UpdateMaterialCBs(gt);
     UpdateMainPassCB(gt);
+    UpdateReflectedPassCB(gt);
 }
 
 void StencilApp::Draw(const GameTimer& gt)
@@ -178,6 +179,46 @@ void StencilApp::OnMouseMove(WPARAM btnState, int x, int y)
 
 void StencilApp::OnKeyboardInput(const GameTimer& gt)
 {
+    using namespace DirectX;
+    const float dt = gt.DeltaTime();
+
+    if (GetAsyncKeyState('A') & 0x8000)
+        skullTranslation.x -= 1.0f * dt;
+
+    if (GetAsyncKeyState('D') & 0x8000)
+        skullTranslation.x += 1.0f * dt;
+
+    if (GetAsyncKeyState('W') & 0x8000)
+        skullTranslation.y += 1.0f * dt;
+
+    if (GetAsyncKeyState('S') & 0x8000)
+        skullTranslation.y -= 1.0f * dt;
+
+    // Don't let user move below ground plane.
+    skullTranslation.y = MathHelper::Max(skullTranslation.y, 0.0f);
+
+    // Update the new world matrix.
+    XMMATRIX skullRotate = XMMatrixRotationY(0.5f * MathHelper::Pi);
+    XMMATRIX skullScale = XMMatrixScaling(0.45f, 0.45f, 0.45f);
+    XMMATRIX skullOffset = XMMatrixTranslation(skullTranslation.x, skullTranslation.y, skullTranslation.z);
+    XMMATRIX skullWorld = skullRotate * skullScale * skullOffset;
+    XMStoreFloat4x4(&mSkullRitem->World, skullWorld);
+
+    // Update reflection world matrix.
+    XMVECTOR mirrorPlane = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f); // xy plane
+    XMMATRIX R = XMMatrixReflect(mirrorPlane);
+    //XMStoreFloat4x4(&mReflectedSkullRitem->World, skullWorld * R);
+
+    // Update shadow world matrix.
+    XMVECTOR shadowPlane = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f); // xz plane
+    XMVECTOR toMainLight = -XMLoadFloat3(&mainPassCB.Lights[0].Direction);
+    XMMATRIX S = XMMatrixShadow(shadowPlane, toMainLight);
+    XMMATRIX shadowOffsetY = XMMatrixTranslation(0.0f, 0.001f, 0.0f);
+    //XMStoreFloat4x4(&mShadowedSkullRitem->World, skullWorld * S * shadowOffsetY);
+
+    mSkullRitem->NumFramesDirty = gNumFrameResources;
+    //mReflectedSkullRitem->NumFramesDirty = gNumFrameResources;
+    //mShadowedSkullRitem->NumFramesDirty = gNumFrameResources;
 }
 
 void StencilApp::UpdateCamera(const GameTimer& gt)
@@ -288,6 +329,10 @@ void StencilApp::UpdateMainPassCB(const GameTimer& gt)
 
     auto currPassCB = currFrameResource->PassCB.get();
     currPassCB->CopyData(0, mainPassCB);
+}
+
+void StencilApp::UpdateReflectedPassCB(const GameTimer& gt)
+{
 }
 
 void StencilApp::LoadTextures()
