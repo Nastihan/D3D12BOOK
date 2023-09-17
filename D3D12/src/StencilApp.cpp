@@ -132,6 +132,10 @@ void StencilApp::Draw(const GameTimer& gt)
     pCommandList->SetPipelineState(PSOs["transparent"].Get());
     DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Transparent]);
 
+    // shadow draw
+    pCommandList->SetPipelineState(PSOs["shadow"].Get());
+    DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Shadow]);
+
     pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
         CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT
     ));
@@ -756,13 +760,10 @@ void StencilApp::BuildPSOs()
     maskPsoDesc.DepthStencilState.FrontFace.StencilPassOp = D3D12_STENCIL_OP_REPLACE;
     maskPsoDesc.DepthStencilState.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS;
     ThrowIfFailed(pDevice->CreateGraphicsPipelineState(&maskPsoDesc, IID_PPV_ARGS(&PSOs["mask"])));
-
     // 
     // PSO for stencil reflection
     //
-
     D3D12_GRAPHICS_PIPELINE_STATE_DESC reflectionPsoDesc = opaquePsoDesc;
-
     auto dsDesc = CD3DX12_DEPTH_STENCIL_DESC (D3D12_DEFAULT);
     dsDesc.StencilEnable = true;
     dsDesc.StencilWriteMask = 0xff;
@@ -771,11 +772,35 @@ void StencilApp::BuildPSOs()
     dsDesc.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
     dsDesc.FrontFace.StencilPassOp = D3D12_STENCIL_OP_KEEP;
     dsDesc.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
-
     reflectionPsoDesc.DepthStencilState = dsDesc;
     reflectionPsoDesc.RasterizerState.FrontCounterClockwise = true;
-
     ThrowIfFailed(pDevice->CreateGraphicsPipelineState(&reflectionPsoDesc, IID_PPV_ARGS(&PSOs["reflect"])));
+    // 
+    // stencil shadow PSO
+    //
+    D3D12_DEPTH_STENCIL_DESC shadowDSS;
+    shadowDSS.DepthEnable = true;
+    shadowDSS.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+    shadowDSS.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+    shadowDSS.StencilEnable = true;
+    shadowDSS.StencilReadMask = 0xff;
+    shadowDSS.StencilWriteMask = 0xff;
+
+    shadowDSS.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+    shadowDSS.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+    shadowDSS.FrontFace.StencilPassOp = D3D12_STENCIL_OP_INCR;
+    shadowDSS.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
+
+    // We are not rendering backfacing polygons, so these settings do not matter.
+    shadowDSS.BackFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+    shadowDSS.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+    shadowDSS.BackFace.StencilPassOp = D3D12_STENCIL_OP_INCR;
+    shadowDSS.BackFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
+
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC shadowPsoDesc = transparentPsoDesc;
+    shadowPsoDesc.DepthStencilState = shadowDSS;
+    ThrowIfFailed(pDevice->CreateGraphicsPipelineState(&shadowPsoDesc, IID_PPV_ARGS(&PSOs["shadow"])));
+
 
 }
 
