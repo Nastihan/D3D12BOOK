@@ -31,6 +31,8 @@ enum class RenderLayer : int
 {
 	Opaque = 0,
 	Mask = 1,
+	Reflected = 2,
+	Shadow = 3,
 	Count
 };
 
@@ -106,7 +108,7 @@ private:
 
 
 	PassConstants mainPassCB;
-	PassConstants reflectionPassCB;
+	PassConstants reflectedPassCB;
 
 	DirectX::XMFLOAT3 skullTranslation = { 0.0f, 1.0f, -5.0f };
 

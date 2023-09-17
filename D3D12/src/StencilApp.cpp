@@ -104,15 +104,25 @@ void StencilApp::Draw(const GameTimer& gt)
 
     pCommandList->SetGraphicsRootSignature(pRootSignature.Get());
 
+
+    UINT passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
     auto passCB = currFrameResource->PassCB->Resource();
     pCommandList->SetGraphicsRootConstantBufferView(2, passCB->GetGPUVirtualAddress());
 
+
+    // opaque pass
     pCommandList->SetPipelineState(PSOs["opaque"].Get());
     DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Opaque]);
 
+    // mask generation pass
     pCommandList->OMSetStencilRef(1);
     pCommandList->SetPipelineState(PSOs["mask"].Get());
     DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Mask]);
+
+    // reflected draw 
+    pCommandList->SetGraphicsRootConstantBufferView(2, passCB->GetGPUVirtualAddress() + 1 * passCBByteSize);
+    pCommandList->SetPipelineState(PSOs["reflect"].Get());
+    DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Reflected]);
 
     pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
         CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT
@@ -207,18 +217,18 @@ void StencilApp::OnKeyboardInput(const GameTimer& gt)
     // Update reflection world matrix.
     XMVECTOR mirrorPlane = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f); // xy plane
     XMMATRIX R = XMMatrixReflect(mirrorPlane);
-    //XMStoreFloat4x4(&mReflectedSkullRitem->World, skullWorld * R);
+    XMStoreFloat4x4(&mReflectedSkullRitem->World, skullWorld * R);
 
     // Update shadow world matrix.
     XMVECTOR shadowPlane = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f); // xz plane
     XMVECTOR toMainLight = -XMLoadFloat3(&mainPassCB.Lights[0].Direction);
     XMMATRIX S = XMMatrixShadow(shadowPlane, toMainLight);
     XMMATRIX shadowOffsetY = XMMatrixTranslation(0.0f, 0.001f, 0.0f);
-    //XMStoreFloat4x4(&mShadowedSkullRitem->World, skullWorld * S * shadowOffsetY);
+    XMStoreFloat4x4(&mShadowedSkullRitem->World, skullWorld * S * shadowOffsetY);
 
     mSkullRitem->NumFramesDirty = gNumFrameResources;
-    //mReflectedSkullRitem->NumFramesDirty = gNumFrameResources;
-    //mShadowedSkullRitem->NumFramesDirty = gNumFrameResources;
+    mReflectedSkullRitem->NumFramesDirty = gNumFrameResources;
+    mShadowedSkullRitem->NumFramesDirty = gNumFrameResources;
 }
 
 void StencilApp::UpdateCamera(const GameTimer& gt)
@@ -321,11 +331,11 @@ void StencilApp::UpdateMainPassCB(const GameTimer& gt)
     mainPassCB.DeltaTime = gt.DeltaTime();
     mainPassCB.AmbientLight = { 0.25f, 0.25f, 0.35f, 1.0f };
     mainPassCB.Lights[0].Direction = { 0.57735f, -0.57735f, 0.57735f };
-    mainPassCB.Lights[0].Strength = { 0.9f, 0.9f, 0.9f };
+    mainPassCB.Lights[0].Strength = { 0.6f, 0.6f, 0.6f };
     mainPassCB.Lights[1].Direction = { -0.57735f, -0.57735f, 0.57735f };
-    mainPassCB.Lights[1].Strength = { 0.5f, 0.5f, 0.5f };
+    mainPassCB.Lights[1].Strength = { 0.3f, 0.3f, 0.3f };
     mainPassCB.Lights[2].Direction = { 0.0f, -0.707f, -0.707f };
-    mainPassCB.Lights[2].Strength = { 0.2f, 0.2f, 0.2f };
+    mainPassCB.Lights[2].Strength = { 0.15f, 0.15f, 0.15f };
 
     auto currPassCB = currFrameResource->PassCB.get();
     currPassCB->CopyData(0, mainPassCB);
@@ -333,6 +343,24 @@ void StencilApp::UpdateMainPassCB(const GameTimer& gt)
 
 void StencilApp::UpdateReflectedPassCB(const GameTimer& gt)
 {
+    using namespace DirectX;
+
+    reflectedPassCB = mainPassCB;
+
+    XMVECTOR mirrorPlane = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f); // xy plane
+    XMMATRIX R = XMMatrixReflect(mirrorPlane);
+
+    // Reflect the lighting.
+    for (int i = 0; i < 3; ++i)
+    {
+        XMVECTOR lightDir = XMLoadFloat3(&mainPassCB.Lights[i].Direction);
+        XMVECTOR reflectedLightDir = XMVector3TransformNormal(lightDir, R);
+        XMStoreFloat3(&reflectedPassCB.Lights[i].Direction, reflectedLightDir);
+    }
+
+    // Reflected pass stored in index 1
+    auto currPassCB = currFrameResource->PassCB.get();
+    currPassCB->CopyData(1, reflectedPassCB);
 }
 
 void StencilApp::LoadTextures()
@@ -721,6 +749,26 @@ void StencilApp::BuildPSOs()
     maskPsoDesc.DepthStencilState.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS;
     ThrowIfFailed(pDevice->CreateGraphicsPipelineState(&maskPsoDesc, IID_PPV_ARGS(&PSOs["mask"])));
 
+    // 
+    // PSO for stencil reflection
+    //
+
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC reflectionPsoDesc = opaquePsoDesc;
+
+    auto dsDesc = CD3DX12_DEPTH_STENCIL_DESC (D3D12_DEFAULT);
+    dsDesc.StencilEnable = true;
+    dsDesc.StencilWriteMask = 0xff;
+    dsDesc.StencilReadMask = 0xff;
+    dsDesc.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+    dsDesc.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+    dsDesc.FrontFace.StencilPassOp = D3D12_STENCIL_OP_KEEP;
+    dsDesc.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
+
+    reflectionPsoDesc.DepthStencilState = dsDesc;
+    reflectionPsoDesc.RasterizerState.FrontCounterClockwise = true;
+
+    ThrowIfFailed(pDevice->CreateGraphicsPipelineState(&reflectionPsoDesc, IID_PPV_ARGS(&PSOs["reflect"])));
+
 }
 
 void StencilApp::BuildFrameResources()
@@ -728,7 +776,7 @@ void StencilApp::BuildFrameResources()
     for (int i = 0; i < gNumFrameResources; ++i)
     {
         frameResources.push_back(std::make_unique<FrameResource>(pDevice.Get(),
-            1, (UINT)allRItems.size(), (UINT)materials.size()));
+            2, (UINT)allRItems.size(), (UINT)materials.size()));
     }
 }
 
@@ -823,10 +871,23 @@ void StencilApp::BuildRenderItems()
     mSkullRitem = skullRitem.get();
     rItemLayer[(int)RenderLayer::Opaque].push_back(skullRitem.get());
 
+    auto reflectedSkullRitem = std::make_unique<RenderItem>();
+    *reflectedSkullRitem = *skullRitem;
+    reflectedSkullRitem->ObjCBIndex = 3;
+    mReflectedSkullRitem = reflectedSkullRitem.get();
+    rItemLayer[(int)RenderLayer::Reflected].push_back(reflectedSkullRitem.get());
+
+    auto shadowedSkullRitem = std::make_unique<RenderItem>();
+    *shadowedSkullRitem = *skullRitem;
+    shadowedSkullRitem->ObjCBIndex = 4;
+    shadowedSkullRitem->Mat = materials["shadowMat"].get();
+    mShadowedSkullRitem = shadowedSkullRitem.get();
+    rItemLayer[(int)RenderLayer::Shadow].push_back(shadowedSkullRitem.get());
+
     auto mirrorRitem = std::make_unique<RenderItem>();
     mirrorRitem->World = MathHelper::Identity4x4();
     mirrorRitem->TexTransform = MathHelper::Identity4x4();
-    mirrorRitem->ObjCBIndex = 3;
+    mirrorRitem->ObjCBIndex = 5;
     mirrorRitem->Mat = materials["icemirror"].get();
     mirrorRitem->Geo = geometries["roomGeo"].get();
     mirrorRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -838,6 +899,8 @@ void StencilApp::BuildRenderItems()
     allRItems.push_back(std::move(floorRitem));
     allRItems.push_back(std::move(wallsRitem));
     allRItems.push_back(std::move(skullRitem));
+    allRItems.push_back(std::move(reflectedSkullRitem));
+    allRItems.push_back(std::move(shadowedSkullRitem));
     allRItems.push_back(std::move(mirrorRitem));
     
 }
