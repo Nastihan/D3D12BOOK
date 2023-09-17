@@ -124,6 +124,14 @@ void StencilApp::Draw(const GameTimer& gt)
     pCommandList->SetPipelineState(PSOs["reflect"].Get());
     DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Reflected]);
 
+    // restore
+    pCommandList->SetGraphicsRootConstantBufferView(2, passCB->GetGPUVirtualAddress());
+    pCommandList->OMSetStencilRef(0);
+
+    // transparent mirror 
+    pCommandList->SetPipelineState(PSOs["transparent"].Get());
+    DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Transparent]);
+
     pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
         CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT
     ));
@@ -894,6 +902,7 @@ void StencilApp::BuildRenderItems()
     mirrorRitem->IndexCount = mirrorRitem->Geo->DrawArgs["mirror"].IndexCount;
     mirrorRitem->StartIndexLocation = mirrorRitem->Geo->DrawArgs["mirror"].StartIndexLocation;
     mirrorRitem->BaseVertexLocation = mirrorRitem->Geo->DrawArgs["mirror"].BaseVertexLocation;
+    rItemLayer[(int)RenderLayer::Transparent].push_back(mirrorRitem.get());
     rItemLayer[(int)RenderLayer::Mask].push_back(mirrorRitem.get());
     
     allRItems.push_back(std::move(floorRitem));
