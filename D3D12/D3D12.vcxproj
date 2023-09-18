@@ -152,10 +152,10 @@
     <ClCompile Include="src\Common\GameTimer.cpp" />
     <ClCompile Include="src\Common\MathHelper.cpp" />
     <ClCompile Include="src\FrameResource.cpp" />
+    <ClCompile Include="src\TreeBillboardsApp.cpp" />
     <ClCompile Include="src\WinMain.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\BlendApp.h" />
     <ClInclude Include="src\StencilApp.h" />
     <ClInclude Include="src\Common\GeometryGenerator.h" />
     <ClInclude Include="src\Common\Waves.h" />
@@ -168,6 +168,7 @@
     <ClInclude Include="src\Common\DDSTextureLoader.h" />
     <ClInclude Include="src\Common\GameTimer.h" />
     <ClInclude Include="src\Common\MathHelper.h" />
+    <ClInclude Include="src\TreeBillboardsApp.h" />
     <ClInclude Include="src\UploadBuffer.h" />
   </ItemGroup>
   <ItemGroup>
