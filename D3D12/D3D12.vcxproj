@@ -144,7 +144,6 @@
     <ClCompile Include="src\Common\GeometryGenerator.cpp" />
     <ClCompile Include="src\Common\Waves.cpp" />
     <ClCompile Include="src\BoxApp.cpp" />
-    <ClCompile Include="src\StencilApp.cpp" />
     <ClCompile Include="src\FirstApp.cpp" />
     <ClCompile Include="SRC\COMMON\D3DApp.CPP" />
     <ClCompile Include="src\Common\d3dUtil.cpp" />
@@ -156,7 +155,6 @@
     <ClCompile Include="src\WinMain.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\StencilApp.h" />
     <ClInclude Include="src\Common\GeometryGenerator.h" />
     <ClInclude Include="src\Common\Waves.h" />
     <ClInclude Include="src\FrameResource.h" />
@@ -192,6 +190,7 @@
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.0</ShaderModel>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.0</ShaderModel>
     </FxCompile>
+    <FxCompile Include="Shaders\ShaderFiles\TreeSprite.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\ShaderFiles\LightingUtil.hlsli" />

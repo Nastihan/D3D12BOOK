@@ -36,11 +36,6 @@ struct PassConstants
 
 struct Vertex
 {
-    Vertex() = default;
-    Vertex(float x, float y, float z, float nx, float ny, float nz, float u, float v) :
-        Pos(x, y, z),
-        Normal(nx, ny, nz),
-        TexC(u, v) {}
 
     DirectX::XMFLOAT3 Pos;
     DirectX::XMFLOAT3 Normal;
@@ -51,7 +46,7 @@ struct Vertex
 class FrameResource
 {
 public:
-    FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT materialCount);
+    FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT materialCount, UINT waveVertCount);
     FrameResource(const FrameResource& rhs) = delete;
 	FrameResource& operator=(const FrameResource& rhs) = delete;
 	~FrameResource();
