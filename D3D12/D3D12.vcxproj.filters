@@ -111,7 +111,6 @@
     <FxCompile Include="Shaders\ShaderFiles\DefaultVS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\ShaderFiles\TreeSprite.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\ShaderFiles\LightingUtil.hlsli">

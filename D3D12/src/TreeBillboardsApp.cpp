@@ -115,6 +115,9 @@ void TreeBillboardsApp::Draw(const GameTimer& gt)
     pCommandList->SetPipelineState(PSOs["opaque"].Get());
     DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Opaque]);
 
+    pCommandList->SetPipelineState(PSOs["treeSprites"].Get());
+    DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::TreeSprites]);
+
     pCommandList->SetPipelineState(PSOs["alphaZero"].Get());
     DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::AlphaZero]);
 
@@ -494,12 +497,28 @@ void TreeBillboardsApp::BuildShadersAndInputLayout()
     ThrowIfFailed(D3DReadFileToBlob(L"Shaders\\ShaderBins\\DefaultVS.cso", shaders["standardVS"].GetAddressOf()));
     ThrowIfFailed(D3DReadFileToBlob(L"Shaders\\ShaderBins\\DefaultPS.cso", shaders["opaquePS"].GetAddressOf()));
 
+    const D3D_SHADER_MACRO alphaTestDefines[] =
+    {
+        "FOG", "1",
+        "ALPHA_TEST", "1",
+        NULL, NULL
+    };
+
+    shaders["treeSpriteVS"] = d3dUtil::CompileShader(L"Shaders\\ShaderFiles\\TreeSprite.hlsl", nullptr, "VS", "vs_5_0");
+    shaders["treeSpriteGS"] = d3dUtil::CompileShader(L"Shaders\\ShaderFiles\\TreeSprite.hlsl", nullptr, "GS", "gs_5_0");
+    shaders["treeSpritePS"] = d3dUtil::CompileShader(L"Shaders\\ShaderFiles\\TreeSprite.hlsl", alphaTestDefines, "PS", "ps_5_0");
 
     inputLayout =
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
         { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
         { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+    };
+
+    treeSpriteInputLayout =
+    {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "SIZE", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
     };
 }
 
@@ -769,14 +788,24 @@ void TreeBillboardsApp::BuildPSOs()
     transparentPsoDesc.BlendState.RenderTarget[0] = transparentBlendDesc;
 
     ThrowIfFailed(pDevice->CreateGraphicsPipelineState(&transparentPsoDesc, IID_PPV_ARGS(&PSOs["transparent"])));
-
     //
     // PSO for alphaZero objects
     //
     D3D12_GRAPHICS_PIPELINE_STATE_DESC alphaZeroPsoDesc = opaquePsoDesc;
     alphaZeroPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
     ThrowIfFailed(pDevice->CreateGraphicsPipelineState(&alphaZeroPsoDesc, IID_PPV_ARGS(&PSOs["alphaZero"])));
+    //
+    // PSO for tree
+    //
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC treePsoDesc = opaquePsoDesc;
+    treePsoDesc.VS = CD3DX12_SHADER_BYTECODE(shaders["treeSpriteVS"].Get());
+    treePsoDesc.GS = CD3DX12_SHADER_BYTECODE(shaders["treeSpriteGS"].Get());
+    treePsoDesc.PS = CD3DX12_SHADER_BYTECODE(shaders["treeSpritePS"].Get());
+    treePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+    treePsoDesc.InputLayout = { treeSpriteInputLayout.data(), (UINT)treeSpriteInputLayout.size() };
+    treePsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 
+    ThrowIfFailed(pDevice->CreateGraphicsPipelineState(&treePsoDesc, IID_PPV_ARGS(&PSOs["treeSprites"])));
 }
 
 void TreeBillboardsApp::BuildFrameResources()
