@@ -32,6 +32,7 @@ enum class RenderLayer : int
 	Opaque = 0,
 	Transparent = 1,
 	AlphaZero = 2,
+	TreeSprites = 3,
 	Count
 };
 
@@ -69,6 +70,7 @@ private:
 	void BuildLandGeometry();
 	void BuildWavesGeometry();
 	void BuildBoxGeometry();
+	void BuildTreeSpritesGeometry();
 	void BuildPSOs();
 	void BuildFrameResources();
 	void BuildMaterials();
@@ -98,6 +100,7 @@ private:
 	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D12PipelineState>> PSOs;
 
 	std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout;
+	std::vector<D3D12_INPUT_ELEMENT_DESC> treeSpriteInputLayout;
 
 	RenderItem* wavesRItem = nullptr;
 

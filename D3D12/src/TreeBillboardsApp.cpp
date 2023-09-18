@@ -34,6 +34,7 @@ bool TreeBillboardsApp::Initialize()
     BuildLandGeometry();
     BuildWavesGeometry();
     BuildBoxGeometry();
+    BuildTreeSpritesGeometry();
     BuildMaterials();
     BuildRenderItems();
     BuildFrameResources();
@@ -379,9 +380,19 @@ void TreeBillboardsApp::LoadTextures()
         pCommandList.Get(), fenceTex->Filename.c_str(),
         fenceTex->Resource, fenceTex->UploadHeap));
 
+    auto treeArrayTex = std::make_unique<Texture>();
+    treeArrayTex->Name = "treeArrayTex";
+    treeArrayTex->Filename = L"Textures/treeArray2.dds";
+    ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(
+        pDevice.Get(), pCommandList.Get(),
+        treeArrayTex->Filename.c_str(), treeArrayTex->Resource,
+        treeArrayTex->UploadHeap
+    ));
+
     textures[grassTex->Name] = std::move(grassTex);
     textures[waterTex->Name] = std::move(waterTex);
     textures[fenceTex->Name] = std::move(fenceTex);
+    textures[treeArrayTex->Name] = std::move(treeArrayTex);
 }
 
 void TreeBillboardsApp::BuildRootSignature()
@@ -430,7 +441,7 @@ void TreeBillboardsApp::BuildDescriptorHeaps()
     // Create the SRV heap.
     //
     D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-    srvHeapDesc.NumDescriptors = 3;
+    srvHeapDesc.NumDescriptors = 4;
     srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
     srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     ThrowIfFailed(pDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&pSrvDescriptorHeap)));
@@ -443,6 +454,7 @@ void TreeBillboardsApp::BuildDescriptorHeaps()
     auto grassTex = textures["grassTex"]->Resource;
     auto waterTex = textures["waterTex"]->Resource;
     auto fenceTex = textures["fenceTex"]->Resource;
+    auto treeArrayTex = textures["treeArrayTex"]->Resource;
 
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -463,6 +475,18 @@ void TreeBillboardsApp::BuildDescriptorHeaps()
 
     srvDesc.Format = fenceTex->GetDesc().Format;
     pDevice->CreateShaderResourceView(fenceTex.Get(), &srvDesc, hDescriptor);
+
+    // next descriptor
+    hDescriptor.Offset(1, cbvSrvDescriptorSize);
+
+    srvDesc.Format = treeArrayTex->GetDesc().Format;
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+    srvDesc.Texture2DArray.MostDetailedMip = 0;
+    srvDesc.Texture2DArray.MipLevels = -1;
+    srvDesc.Texture2DArray.FirstArraySlice = 0;
+    srvDesc.Texture2DArray.ArraySize = treeArrayTex->GetDesc().DepthOrArraySize;
+    pDevice->CreateShaderResourceView(treeArrayTex.Get(), &srvDesc, hDescriptor);
+
 }
 
 void TreeBillboardsApp::BuildShadersAndInputLayout()
@@ -640,6 +664,69 @@ void TreeBillboardsApp::BuildBoxGeometry()
     geometries["boxGeo"] = std::move(geo);
 }
 
+void TreeBillboardsApp::BuildTreeSpritesGeometry()
+{
+    using namespace DirectX;
+    struct TreeSpriteVertex
+    {
+        XMFLOAT3 Pos;
+        XMFLOAT2 Size;
+    };
+
+    static const int treeCount = 16;
+    std::array<TreeSpriteVertex, 16> vertices;
+    for (UINT i = 0; i < treeCount; ++i)
+    {
+        float x = MathHelper::RandF(-45.0f, 45.0f);
+        float z = MathHelper::RandF(-45.0f, 45.0f);
+        float y = GetHillsHeight(x, z);
+
+        // Move tree slightly above land height.
+        y += 8.0f;
+
+        vertices[i].Pos = XMFLOAT3(x, y, z);
+        vertices[i].Size = XMFLOAT2(20.0f, 20.0f);
+    }
+
+    std::array<std::uint16_t, 16> indices =
+    {
+        0, 1, 2, 3, 4, 5, 6, 7,
+        8, 9, 10, 11, 12, 13, 14, 15
+    };
+
+    const UINT vbByteSize = (UINT)vertices.size() * sizeof(TreeSpriteVertex);
+    const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
+
+    auto geo = std::make_unique<MeshGeometry>();
+    geo->Name = "treeSpritesGeo";
+
+    ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->VertexBufferCPU));
+    CopyMemory(geo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
+
+    ThrowIfFailed(D3DCreateBlob(ibByteSize, &geo->IndexBufferCPU));
+    CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
+
+    geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(pDevice.Get(),
+        pCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
+
+    geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(pDevice.Get(),
+        pCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
+
+    geo->VertexByteStride = sizeof(TreeSpriteVertex);
+    geo->VertexBufferByteSize = vbByteSize;
+    geo->IndexFormat = DXGI_FORMAT_R16_UINT;
+    geo->IndexBufferByteSize = ibByteSize;
+
+    SubmeshGeometry submesh;
+    submesh.IndexCount = (UINT)indices.size();
+    submesh.StartIndexLocation = 0;
+    submesh.BaseVertexLocation = 0;
+
+    geo->DrawArgs["points"] = submesh;
+
+    geometries["treeSpritesGeo"] = std::move(geo);
+}
+
 void TreeBillboardsApp::BuildPSOs()
 {
     D3D12_GRAPHICS_PIPELINE_STATE_DESC opaquePsoDesc;
@@ -730,9 +817,20 @@ void TreeBillboardsApp::BuildMaterials()
     wirefence->FresnelR0 = XMFLOAT3(0.1f, 0.1f, 0.1f);
     wirefence->Roughness = 0.25f;
 
+    auto treeSprites = std::make_unique<Material>();
+    treeSprites->Name = "treeSprites";
+    treeSprites->MatCBIndex = 3;
+    treeSprites->DiffuseSrvHeapIndex = 3;
+    treeSprites->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    treeSprites->FresnelR0 = XMFLOAT3(0.01f, 0.01f, 0.01f);
+    treeSprites->Roughness = 0.125f;
+
     materials["grass"] = std::move(grass);
     materials["water"] = std::move(water);
     materials["wirefence"] = std::move(wirefence);
+    materials["treeSprites"] = std::move(treeSprites);
+
+
 }
 
 void TreeBillboardsApp::BuildRenderItems()
@@ -778,9 +876,22 @@ void TreeBillboardsApp::BuildRenderItems()
 
     rItemLayer[(int)RenderLayer::AlphaZero].push_back(boxRitem.get());
 
+    auto treeSpritesRitem = std::make_unique<RenderItem>();
+    treeSpritesRitem->World = MathHelper::Identity4x4();
+    treeSpritesRitem->ObjCBIndex = 3;
+    treeSpritesRitem->Mat = materials["treeSprites"].get();
+    treeSpritesRitem->Geo = geometries["treeSpritesGeo"].get();
+    treeSpritesRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_POINTLIST;
+    treeSpritesRitem->IndexCount = treeSpritesRitem->Geo->DrawArgs["points"].IndexCount;
+    treeSpritesRitem->StartIndexLocation = treeSpritesRitem->Geo->DrawArgs["points"].StartIndexLocation;
+    treeSpritesRitem->BaseVertexLocation = treeSpritesRitem->Geo->DrawArgs["points"].BaseVertexLocation;
+
+    rItemLayer[(int)RenderLayer::TreeSprites].push_back(treeSpritesRitem.get());
+
     allRItems.push_back(std::move(wavesRitem));
     allRItems.push_back(std::move(gridRitem));
     allRItems.push_back(std::move(boxRitem));
+    allRItems.push_back(std::move(treeSpritesRitem));
 }
 
 std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> TreeBillboardsApp::GetStaticSamplers()
