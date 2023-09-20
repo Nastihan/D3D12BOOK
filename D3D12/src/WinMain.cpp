@@ -1,5 +1,5 @@
 #include <Windows.h>
-#include "TreeBillboardsApp.h"
+#include "BlurApp.h"
 
 const int gNumFrameResources = 3;
 
@@ -11,7 +11,7 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
 	try
 	{
-		TreeBillboardsApp app(hInstance);
+		BlurApp app(hInstance);
 		if (!app.Initialize())
 		{
 			return 0;
