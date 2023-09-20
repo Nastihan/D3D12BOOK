@@ -3,6 +3,7 @@
 #include "UploadBuffer.h"
 #include "FrameResource.h"
 #include "Common/Waves.h"
+#include "BlurFilter.h"
 
 using namespace DirectX::PackedVector;
 
@@ -81,6 +82,8 @@ private:
 	DirectX::XMFLOAT3 GetHillsNormal(float x, float z)const;
 
 private:
+	std::unique_ptr<BlurFilter> blurF;
+
 	std::vector<std::unique_ptr<FrameResource>> frameResources;
 	FrameResource* currFrameResource = nullptr;
 	int currFrameResourceIndex = 0;

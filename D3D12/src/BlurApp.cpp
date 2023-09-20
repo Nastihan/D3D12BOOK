@@ -27,6 +27,8 @@ bool BlurApp::Initialize()
 
     waves = std::make_unique<Waves>(128, 128, 1.0f, 0.03f, 4.0f, 0.2f);
 
+    blurF = std::make_unique<BlurFilter>(pDevice.Get(), clientWidth, clientHeight, backBufferFormat);
+
     LoadTextures();
     BuildRootSignature();
     BuildDescriptorHeaps();
@@ -120,8 +122,16 @@ void BlurApp::Draw(const GameTimer& gt)
     pCommandList->SetPipelineState(PSOs["transparent"].Get());
     DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Transparent]);
 
+    auto blurTex = blurF->Resource();
+
     pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
-        CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT
+        CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE
+    ));
+
+    pCommandList->CopyResource(blurTex, CurrentBackBuffer());
+
+    pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
+        CurrentBackBuffer(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_PRESENT
     ));
 
     ThrowIfFailed(pCommandList->Close());

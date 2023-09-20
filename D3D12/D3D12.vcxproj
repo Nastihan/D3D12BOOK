@@ -142,6 +142,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\BlurApp.cpp" />
+    <ClCompile Include="src\BlurFilter.cpp" />
     <ClCompile Include="src\Common\GeometryGenerator.cpp" />
     <ClCompile Include="src\Common\Waves.cpp" />
     <ClCompile Include="src\BoxApp.cpp" />
@@ -157,6 +158,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\BlurApp.h" />
+    <ClInclude Include="src\BlurFilter.h" />
     <ClInclude Include="src\Common\GeometryGenerator.h" />
     <ClInclude Include="src\Common\Waves.h" />
     <ClInclude Include="src\FrameResource.h" />
