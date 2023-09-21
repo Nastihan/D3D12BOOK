@@ -122,6 +122,9 @@ void BlurApp::Draw(const GameTimer& gt)
     pCommandList->SetPipelineState(PSOs["transparent"].Get());
     DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Transparent]);
 
+    blurF->Execute(pCommandList.Get(), CurrentBackBuffer());
+
+
     pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
         CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT
     ));

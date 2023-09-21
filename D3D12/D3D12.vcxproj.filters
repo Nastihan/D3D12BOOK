@@ -123,6 +123,7 @@
     <FxCompile Include="Shaders\ShaderFiles\DefaultVS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
+    <FxCompile Include="Shaders\ShaderFiles\BlurCS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\ShaderFiles\LightingUtil.hlsli">

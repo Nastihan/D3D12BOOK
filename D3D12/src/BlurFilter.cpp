@@ -5,7 +5,9 @@ BlurFilter::BlurFilter(ID3D12Device* device, UINT width, UINT height, DXGI_FORMA
 {
     BuildDescriptorHeap();
     BuildBlurTex();
+    CreateView();
     BuildRootSignature();
+    BuildComputeShaderAndPSO();
 }
 
 void BlurFilter::BuildBlurTex()
@@ -28,14 +30,28 @@ void BlurFilter::BuildDescriptorHeap()
     D3D12_DESCRIPTOR_HEAP_DESC uavHeapDesc{};
     uavHeapDesc.NumDescriptors = 1;
     uavHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+    uavHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 
     ThrowIfFailed(device->CreateDescriptorHeap(&uavHeapDesc, IID_PPV_ARGS(&uavHeap)));
+
+}
+
+void BlurFilter::CreateView()
+{
+    D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
+    uavDesc.Format = format;
+    uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+    uavDesc.Texture2D.MipSlice = 0;
+
+    device->CreateUnorderedAccessView(blurMap.Get(), nullptr, &uavDesc, uavHeap->GetCPUDescriptorHandleForHeapStart());
 }
 
 void BlurFilter::BuildRootSignature()
 {
     CD3DX12_ROOT_PARAMETER rootParams[1]{};
-    rootParams->InitAsUnorderedAccessView(0U);
+    CD3DX12_DESCRIPTOR_RANGE texTable(D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
+        1, 0U);
+    rootParams[0].InitAsDescriptorTable(1, &texTable);
 
     CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(
         1, rootParams, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT
@@ -59,13 +75,36 @@ void BlurFilter::BuildRootSignature()
         IID_PPV_ARGS(rootSig.GetAddressOf())));
 }
 
+void BlurFilter::BuildComputeShaderAndPSO()
+{
+    ThrowIfFailed(D3DReadFileToBlob(L"Shaders\\ShaderBins\\BlurCS.cso", CS.GetAddressOf()));
+
+    D3D12_COMPUTE_PIPELINE_STATE_DESC computePsoDesc{};
+    computePsoDesc.CS = CD3DX12_SHADER_BYTECODE(CS.Get());
+    computePsoDesc.pRootSignature = rootSig.Get();
+    computePsoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+    ThrowIfFailed(device->CreateComputePipelineState(&computePsoDesc, IID_PPV_ARGS(&PSO)));
+}
+
 void BlurFilter::Execute(ID3D12GraphicsCommandList* cmdList, ID3D12Resource* input)
 {
-    cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
+    /*cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
         input, D3D12_RESOURCE_STATE_RENDER_TARGET,
         D3D12_RESOURCE_STATE_COPY_SOURCE
     ));
-    cmdList->CopyResource(blurMap.Get(), input);
+    cmdList->CopyResource(blurMap.Get(), input);*/
+
+    cmdList->SetPipelineState(PSO.Get());
+
+    cmdList->SetComputeRootSignature(rootSig.Get());
+
+    ID3D12DescriptorHeap* heaps[] = { uavHeap.Get() };
+    cmdList->SetDescriptorHeaps(1, heaps);
+
+    cmdList->SetComputeRootDescriptorTable(0U, uavHeap->GetGPUDescriptorHandleForHeapStart());
+
+    UINT numGroupsX = (UINT)ceilf(width / 256.0f);
+    cmdList->Dispatch(numGroupsX, height, 1);
 
     
 
