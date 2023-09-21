@@ -65,6 +65,7 @@ private:
 
 	void LoadTextures();
 	void BuildRootSignature();
+	void BuildPostProcessRootSignature();
 	void BuildDescriptorHeaps();
 	void BuildShadersAndInputLayout();
 	void BuildLandGeometry();
@@ -91,6 +92,7 @@ private:
 	UINT cbvSrvDescriptorSize = 0;
 
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> pRootSignature = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> pPostProcessRootSignature = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> pSrvDescriptorHeap = nullptr;
 

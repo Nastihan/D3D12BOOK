@@ -27,10 +27,13 @@ bool BlurApp::Initialize()
 
     waves = std::make_unique<Waves>(128, 128, 1.0f, 0.03f, 4.0f, 0.2f);
     ////*********************////
-    blurF = std::make_unique<BlurFilter>(pDevice.Get(), clientWidth, clientHeight, backBufferFormat);
+
+    blurF = std::make_unique<BlurFilter>(pDevice.Get(),
+        clientWidth, clientHeight, DXGI_FORMAT_R8G8B8A8_UNORM);
 
     LoadTextures();
     BuildRootSignature();
+    BuildPostProcessRootSignature();
     BuildDescriptorHeaps();
     BuildShadersAndInputLayout();
     BuildLandGeometry();
@@ -122,8 +125,14 @@ void BlurApp::Draw(const GameTimer& gt)
     pCommandList->SetPipelineState(PSOs["transparent"].Get());
     DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Transparent]);
 
-    blurF->Execute(pCommandList.Get(), CurrentBackBuffer());
+    blurF->Execute(pCommandList.Get(), pPostProcessRootSignature.Get(),
+        PSOs["horzBlur"].Get(), PSOs["vertBlur"].Get(), CurrentBackBuffer(), 4);
 
+    // Prepare to copy blurred output to the back buffer.
+    pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
+        D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COPY_DEST));
+
+    pCommandList->CopyResource(CurrentBackBuffer(), blurF->Output());
 
     pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
         CurrentBackBuffer(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT
@@ -429,13 +438,53 @@ void BlurApp::BuildRootSignature()
         IID_PPV_ARGS(pRootSignature.GetAddressOf())));
 }
 
+void BlurApp::BuildPostProcessRootSignature()
+{
+    CD3DX12_DESCRIPTOR_RANGE srvTable;
+    srvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+
+    CD3DX12_DESCRIPTOR_RANGE uavTable;
+    uavTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0);
+
+    // Root parameter can be a table, root descriptor or root constants.
+    CD3DX12_ROOT_PARAMETER slotRootParameter[3];
+
+    // Perfomance TIP: Order from most frequent to least frequent.
+    slotRootParameter[0].InitAsConstants(12, 0);
+    slotRootParameter[1].InitAsDescriptorTable(1, &srvTable);
+    slotRootParameter[2].InitAsDescriptorTable(1, &uavTable);
+
+    // A root signature is an array of root parameters.
+    CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(3, slotRootParameter,
+        0, nullptr,
+        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+    // create a root signature with a single slot which points to a descriptor range consisting of a single constant buffer
+    Microsoft::WRL::ComPtr<ID3DBlob> serializedRootSig = nullptr;
+    Microsoft::WRL::ComPtr<ID3DBlob> errorBlob = nullptr;
+    HRESULT hr = D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
+        serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
+
+    if (errorBlob != nullptr)
+    {
+        ::OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+    }
+    ThrowIfFailed(hr);
+
+    ThrowIfFailed(pDevice->CreateRootSignature(
+        0,
+        serializedRootSig->GetBufferPointer(),
+        serializedRootSig->GetBufferSize(),
+        IID_PPV_ARGS(pPostProcessRootSignature.GetAddressOf())));
+}
+
 void BlurApp::BuildDescriptorHeaps()
 {
     //
     // Create the SRV heap.
     //
     D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-    srvHeapDesc.NumDescriptors = 3;
+    srvHeapDesc.NumDescriptors = 7;
     srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
     srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     ThrowIfFailed(pDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&pSrvDescriptorHeap)));
@@ -468,13 +517,19 @@ void BlurApp::BuildDescriptorHeaps()
 
     srvDesc.Format = fenceTex->GetDesc().Format;
     pDevice->CreateShaderResourceView(fenceTex.Get(), &srvDesc, hDescriptor);
+
+    blurF->BuildDescriptors(
+        CD3DX12_CPU_DESCRIPTOR_HANDLE(pSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), 3, cbvSrvUavDescriptorSize),
+        CD3DX12_GPU_DESCRIPTOR_HANDLE(pSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart(), 3, cbvSrvUavDescriptorSize),
+        cbvSrvUavDescriptorSize);
 }
 
 void BlurApp::BuildShadersAndInputLayout()
 {
     ThrowIfFailed(D3DReadFileToBlob(L"Shaders\\ShaderBins\\DefaultVS.cso", shaders["standardVS"].GetAddressOf()));
     ThrowIfFailed(D3DReadFileToBlob(L"Shaders\\ShaderBins\\DefaultPS.cso", shaders["opaquePS"].GetAddressOf()));
-
+    shaders["horzBlurCS"] = d3dUtil::CompileShader(L"Shaders\\ShaderFiles\\BlurCS.hlsl", nullptr, "HorzBlurCS", "cs_5_0");
+    shaders["vertBlurCS"] = d3dUtil::CompileShader(L"Shaders\\ShaderFiles\\BlurCS.hlsl", nullptr, "VertBlurCS", "cs_5_0");
 
     inputLayout =
     {
@@ -683,11 +738,8 @@ void BlurApp::BuildPSOs()
     transparentBlendDesc.BlendOpAlpha = D3D12_BLEND_OP_ADD;
     transparentBlendDesc.LogicOp = D3D12_LOGIC_OP_NOOP;
     transparentBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-
     transparentPsoDesc.BlendState.RenderTarget[0] = transparentBlendDesc;
-
     ThrowIfFailed(pDevice->CreateGraphicsPipelineState(&transparentPsoDesc, IID_PPV_ARGS(&PSOs["transparent"])));
-
     //
     // PSO for alphaZero objects
     //
@@ -695,6 +747,31 @@ void BlurApp::BuildPSOs()
     alphaZeroPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
     ThrowIfFailed(pDevice->CreateGraphicsPipelineState(&alphaZeroPsoDesc, IID_PPV_ARGS(&PSOs["alphaZero"])));
 
+    //
+    // PSO for horizontal blur
+    //
+    D3D12_COMPUTE_PIPELINE_STATE_DESC horzBlurPSO = {};
+    horzBlurPSO.pRootSignature = pPostProcessRootSignature.Get();
+    horzBlurPSO.CS =
+    {
+        reinterpret_cast<BYTE*>(shaders["horzBlurCS"]->GetBufferPointer()),
+        shaders["horzBlurCS"]->GetBufferSize()
+    };
+    horzBlurPSO.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+    ThrowIfFailed(pDevice->CreateComputePipelineState(&horzBlurPSO, IID_PPV_ARGS(&PSOs["horzBlur"])));
+
+    //
+    // PSO for vertical blur
+    //
+    D3D12_COMPUTE_PIPELINE_STATE_DESC vertBlurPSO = {};
+    vertBlurPSO.pRootSignature = pPostProcessRootSignature.Get();
+    vertBlurPSO.CS =
+    {
+        reinterpret_cast<BYTE*>(shaders["vertBlurCS"]->GetBufferPointer()),
+        shaders["vertBlurCS"]->GetBufferSize()
+    };
+    vertBlurPSO.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+    ThrowIfFailed(pDevice->CreateComputePipelineState(&vertBlurPSO, IID_PPV_ARGS(&PSOs["vertBlur"])));
 }
 
 void BlurApp::BuildFrameResources()
