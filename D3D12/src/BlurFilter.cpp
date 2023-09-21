@@ -18,7 +18,7 @@ void BlurFilter::BuildBlurTex()
     );
 
     ThrowIfFailed(device->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-        D3D12_HEAP_FLAG_NONE, &texDesc, D3D12_RESOURCE_STATE_COPY_DEST,
+        D3D12_HEAP_FLAG_NONE, &texDesc, D3D12_RESOURCE_STATE_COMMON,
         nullptr, IID_PPV_ARGS(&blurMap)
     ));
 
@@ -88,11 +88,18 @@ void BlurFilter::BuildComputeShaderAndPSO()
 
 void BlurFilter::Execute(ID3D12GraphicsCommandList* cmdList, ID3D12Resource* input)
 {
-    /*cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
+    cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
         input, D3D12_RESOURCE_STATE_RENDER_TARGET,
         D3D12_RESOURCE_STATE_COPY_SOURCE
     ));
-    cmdList->CopyResource(blurMap.Get(), input);*/
+    cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
+        blurMap.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST
+    ));
+    cmdList->CopyResource(blurMap.Get(), input);
+
+    cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
+        blurMap.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS
+    ));
 
     cmdList->SetPipelineState(PSO.Get());
 
@@ -105,6 +112,16 @@ void BlurFilter::Execute(ID3D12GraphicsCommandList* cmdList, ID3D12Resource* inp
 
     UINT numGroupsX = (UINT)ceilf(width / 256.0f);
     cmdList->Dispatch(numGroupsX, height, 1);
+
+    D3D12_RESOURCE_BARRIER barriers[] = {CD3DX12_RESOURCE_BARRIER::Transition(blurMap.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+        D3D12_RESOURCE_STATE_COPY_SOURCE), CD3DX12_RESOURCE_BARRIER::Transition(input, D3D12_RESOURCE_STATE_COPY_SOURCE,
+        D3D12_RESOURCE_STATE_COPY_DEST) };
+    cmdList->ResourceBarrier(2, barriers);
+    cmdList->CopyResource(input, blurMap.Get());
+
+    cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
+        blurMap.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COMMON
+    ));
 
     
 
