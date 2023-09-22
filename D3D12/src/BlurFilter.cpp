@@ -126,6 +126,10 @@ void BlurFilter::Execute(ID3D12GraphicsCommandList* cmdList,
 		cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mBlurMap1.Get(),
 			D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 	}
+	cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mBlurMap0.Get(),
+		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_SOURCE));
+	cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mBlurMap1.Get(),
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON));
 }
 
 std::vector<float> BlurFilter::CalcGaussWeights(float sigma)
@@ -213,6 +217,8 @@ void BlurFilter::BuildResources()
 		nullptr,
 		IID_PPV_ARGS(&mBlurMap0)));
 
+	mBlurMap0->SetName(L"BLUR MAP 0");
+
 	ThrowIfFailed(md3dDevice->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		D3D12_HEAP_FLAG_NONE,
@@ -220,4 +226,7 @@ void BlurFilter::BuildResources()
 		D3D12_RESOURCE_STATE_COMMON,
 		nullptr,
 		IID_PPV_ARGS(&mBlurMap1)));
+
+	mBlurMap1->SetName(L"BLUR MAP 1");
+
 }

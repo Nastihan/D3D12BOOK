@@ -61,6 +61,11 @@ void BlurApp::OnResize()
 
     DirectX::XMMATRIX P = DirectX::XMMatrixPerspectiveFovLH(0.25f * MathHelper::Pi, GetAR(), 1.0f, 1000.0f);
     DirectX::XMStoreFloat4x4(&proj, P);
+
+    if (blurF != nullptr)
+    {
+        blurF->OnResize(clientWidth, clientHeight);
+    }
 }
 
 void BlurApp::Update(const GameTimer& gt)
@@ -129,10 +134,14 @@ void BlurApp::Draw(const GameTimer& gt)
         PSOs["horzBlur"].Get(), PSOs["vertBlur"].Get(), CurrentBackBuffer(), 4);
 
     // Prepare to copy blurred output to the back buffer.
+    
     pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
         D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COPY_DEST));
 
     pCommandList->CopyResource(CurrentBackBuffer(), blurF->Output());
+
+    pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(blurF->Output(),
+        D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COMMON));
 
     pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
         CurrentBackBuffer(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT
