@@ -45,21 +45,21 @@ private:
 	virtual void OnMouseMove(WPARAM btnState, int x, int y)override;
 
 	void OnKeyboardInput(const GameTimer& gt);
-	void UpdateCamera(const GameTimer& gt);
 	void AnimateMaterials(const GameTimer& gt);
 	void UpdateObjectCBs(const GameTimer& gt);
-	void UpdateMaterialCBs(const GameTimer& gt);
+	void UpdateMaterialBuffer(const GameTimer& gt);
 	void UpdateMainPassCB(const GameTimer& gt);
 
+	void LoadTextures();
 	void BuildRootSignature();
+	void BuildDescriptorHeaps();
 	void BuildShadersAndInputLayout();
 	void BuildShapeGeometry();
-	void BuildSkullGeometry();
 	void BuildPSOs();
 	void BuildFrameResources();
 	void BuildMaterials();
 	void BuildRenderItems();
-	void DrawRendeItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& rItems);
+	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& rItems);
 
 private:
 	std::vector<std::unique_ptr<FrameResource>> frameResources;

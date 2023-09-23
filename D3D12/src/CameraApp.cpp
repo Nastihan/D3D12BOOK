@@ -23,10 +23,11 @@ bool CameraApp::Initialize()
 
     cbvSrvDescriptorSize = pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
+    LoadTextures();
     BuildRootSignature();
+    BuildDescriptorHeaps();
     BuildShadersAndInputLayout();
     BuildShapeGeometry();
-    BuildSkullGeometry();
     BuildMaterials();
     BuildRenderItems();
     BuildFrameResources();
@@ -54,7 +55,6 @@ void CameraApp::OnResize()
 void CameraApp::Update(const GameTimer& gt)
 {
     OnKeyboardInput(gt);
-    UpdateCamera(gt);
 
     currFrameResourceIndex = (currFrameResourceIndex + 1) % gNumFrameResources;
     currFrameResource = frameResources[currFrameResourceIndex].get();
@@ -69,7 +69,7 @@ void CameraApp::Update(const GameTimer& gt)
 
     AnimateMaterials(gt);
     UpdateObjectCBs(gt);
-    UpdateMaterialCBs(gt);
+    UpdateMaterialBuffer(gt);
     UpdateMainPassCB(gt);
 }
 
@@ -99,7 +99,7 @@ void CameraApp::Draw(const GameTimer& gt)
     auto passCB = currFrameResource->PassCB->Resource();
     pCommandList->SetGraphicsRootConstantBufferView(2, passCB->GetGPUVirtualAddress());
 
-    DrawRendeItems(pCommandList.Get(), opaqueRItems);
+    DrawRenderItems(pCommandList.Get(), opaqueRItems);
 
     pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
         CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT
@@ -168,21 +168,6 @@ void CameraApp::OnKeyboardInput(const GameTimer& gt)
 {
 }
 
-void CameraApp::UpdateCamera(const GameTimer& gt)
-{
-    eyePos.x = radius * sinf(phi) * cosf(theta);
-    eyePos.z = radius * sinf(phi) * sinf(theta);
-    eyePos.y = radius * cosf(phi);
-
-    // view matrix
-    DirectX::XMVECTOR pos = DirectX::XMVectorSet(eyePos.x, eyePos.y, eyePos.z, 1.0f);
-    DirectX::XMVECTOR target = DirectX::XMVectorZero();
-    DirectX::XMVECTOR up = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-
-    DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH(pos, target, up);
-    DirectX::XMStoreFloat4x4(&this->view, view);
-}
-
 void CameraApp::AnimateMaterials(const GameTimer& gt)
 {
 }
@@ -211,11 +196,10 @@ void CameraApp::UpdateObjectCBs(const GameTimer& gf)
     }
 }
 
-void CameraApp::UpdateMaterialCBs(const GameTimer& gt)
+void CameraApp::UpdateMaterialBuffer(const GameTimer& gt)
 {
     using namespace DirectX;
-
-    auto currMaterialCB = currFrameResource->MaterialCB.get();
+    auto currMaterialBuffer = currFrameResource->MaterialBuffer.get();
     for (auto& e : materials)
     {
         // Only update the cbuffer data if the constants have changed.  If the cbuffer
@@ -225,19 +209,19 @@ void CameraApp::UpdateMaterialCBs(const GameTimer& gt)
         {
             XMMATRIX matTransform = XMLoadFloat4x4(&mat->MatTransform);
 
-            MaterialConstants matConstants;
-            matConstants.DiffuseAlbedo = mat->DiffuseAlbedo;
-            matConstants.FresnelR0 = mat->FresnelR0;
-            matConstants.Roughness = mat->Roughness;
-            XMStoreFloat4x4(&matConstants.MatTransform, XMMatrixTranspose(matTransform));
+            MaterialData matData;
+            matData.DiffuseAlbedo = mat->DiffuseAlbedo;
+            matData.FresnelR0 = mat->FresnelR0;
+            matData.Roughness = mat->Roughness;
+            XMStoreFloat4x4(&matData.MatTransform, XMMatrixTranspose(matTransform));
+            matData.DiffuseMapIndex = mat->DiffuseSrvHeapIndex;
 
-            currMaterialCB->CopyData(mat->MatCBIndex, matConstants);
+            currMaterialBuffer->CopyData(mat->MatCBIndex, matData);
 
             // Next FrameResource need to be updated too.
             mat->NumFramesDirty--;
         }
     }
-
 }
 
 void CameraApp::UpdateMainPassCB(const GameTimer& gt)
@@ -275,12 +259,52 @@ void CameraApp::UpdateMainPassCB(const GameTimer& gt)
     currPassCB->CopyData(0, mainPassCB);
 }
 
+void CameraApp::LoadTextures()
+{
+    auto bricksTex = std::make_unique<Texture>();
+    bricksTex->Name = "bricksTex";
+    bricksTex->Filename = L"../../Textures/bricks.dds";
+    ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(pDevice.Get(),
+        pCommandList.Get(), bricksTex->Filename.c_str(),
+        bricksTex->Resource, bricksTex->UploadHeap));
+
+    auto stoneTex = std::make_unique<Texture>();
+    stoneTex->Name = "stoneTex";
+    stoneTex->Filename = L"../../Textures/stone.dds";
+    ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(pDevice.Get(),
+        pCommandList.Get(), stoneTex->Filename.c_str(),
+        stoneTex->Resource, stoneTex->UploadHeap));
+
+    auto tileTex = std::make_unique<Texture>();
+    tileTex->Name = "tileTex";
+    tileTex->Filename = L"../../Textures/tile.dds";
+    ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(pDevice.Get(),
+        pCommandList.Get(), tileTex->Filename.c_str(),
+        tileTex->Resource, tileTex->UploadHeap));
+
+    auto crateTex = std::make_unique<Texture>();
+    crateTex->Name = "crateTex";
+    crateTex->Filename = L"../../Textures/WoodCrate01.dds";
+    ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(pDevice.Get(),
+        pCommandList.Get(), crateTex->Filename.c_str(),
+        crateTex->Resource, crateTex->UploadHeap));
+
+    textures[bricksTex->Name] = std::move(bricksTex);
+    textures[stoneTex->Name] = std::move(stoneTex);
+    textures[tileTex->Name] = std::move(tileTex);
+    textures[crateTex->Name] = std::move(crateTex);
+}
+
 void CameraApp::BuildRootSignature()
 {
-    CD3DX12_ROOT_PARAMETER rootParams[3]{};
+    CD3DX12_DESCRIPTOR_RANGE texTable{};
+    texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 0U, 0U);
+
+    CD3DX12_ROOT_PARAMETER rootParams[4]{};
     rootParams[0].InitAsConstantBufferView(0U);
     rootParams[1].InitAsConstantBufferView(1U);
-    rootParams[2].InitAsConstantBufferView(2);
+    rootParams[2].InitAsShaderResourceView(0u, 1u);
+    rootParams->InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_PIXEL);
 
     CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc((UINT)std::size(rootParams), rootParams,
         0U, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
@@ -298,6 +322,53 @@ void CameraApp::BuildRootSignature()
 
     ThrowIfFailed(pDevice->CreateRootSignature(0, rootSigBlob->GetBufferPointer(),
         rootSigBlob->GetBufferSize(), IID_PPV_ARGS(&pRootSignature)));
+}
+
+void CameraApp::BuildDescriptorHeaps()
+{
+    D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc{};
+    srvHeapDesc.NumDescriptors = 4;
+    srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+    srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+    srvHeapDesc.NodeMask = 0;
+    ThrowIfFailed(pDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&pSrvDescriptorHeap)));
+
+    CD3DX12_CPU_DESCRIPTOR_HANDLE descriptorH(pSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+
+    auto bricksTex = textures["bricksTex"]->Resource;
+    auto stoneTex = textures["stoneTex"]->Resource;
+    auto tileTex = textures["tileTex"]->Resource;
+    auto crateTex = textures["crateTex"]->Resource;
+
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srvDesc.Format = bricksTex->GetDesc().Format;
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+    srvDesc.Texture2D.MostDetailedMip = 0;
+    srvDesc.Texture2D.MipLevels = bricksTex->GetDesc().MipLevels;
+    srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+    pDevice->CreateShaderResourceView(bricksTex.Get(), &srvDesc, descriptorH);
+
+    // next
+    descriptorH.Offset(1, cbvSrvDescriptorSize);
+
+    srvDesc.Format = stoneTex->GetDesc().Format;
+    srvDesc.Texture2D.MipLevels = stoneTex->GetDesc().MipLevels;
+    pDevice->CreateShaderResourceView(stoneTex.Get(), &srvDesc, descriptorH);
+
+    // next
+    descriptorH.Offset(1, cbvSrvDescriptorSize);
+
+    srvDesc.Format = tileTex->GetDesc().Format;
+    srvDesc.Texture2D.MipLevels = tileTex->GetDesc().MipLevels;
+    pDevice->CreateShaderResourceView(tileTex.Get(), &srvDesc, descriptorH);
+
+    // next
+    descriptorH.Offset(1, cbvSrvDescriptorSize);
+
+    srvDesc.Format = crateTex->GetDesc().Format;
+    srvDesc.Texture2D.MipLevels = crateTex->GetDesc().MipLevels;
+    pDevice->CreateShaderResourceView(crateTex.Get(), &srvDesc, descriptorH);
 }
 
 void CameraApp::BuildShadersAndInputLayout()
@@ -690,7 +761,7 @@ void CameraApp::BuildRenderItems()
         opaqueRItems.push_back(e.get());
 }
 
-void CameraApp::DrawRendeItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& rItems)
+void CameraApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& rItems)
 {
     UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
     UINT matCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(MaterialConstants));
