@@ -55,6 +55,7 @@ void CameraApp::OnResize()
 void CameraApp::Update(const GameTimer& gt)
 {
     OnKeyboardInput(gt);
+    UpdateCamera(gt);
 
     currFrameResourceIndex = (currFrameResourceIndex + 1) % gNumFrameResources;
     currFrameResource = frameResources[currFrameResourceIndex].get();
@@ -95,7 +96,7 @@ void CameraApp::Draw(const GameTimer& gt)
         1, &CurrentBackBufferView(), true, &DepthStencilView());
 
     ID3D12DescriptorHeap* descHeaps[] = { pSrvDescriptorHeap.Get() };
-    pCommandList->SetDescriptorHeaps(std::size(descHeaps), descHeaps);
+    pCommandList->SetDescriptorHeaps(_countof(descHeaps), descHeaps);
 
     pCommandList->SetGraphicsRootSignature(pRootSignature.Get());
 
@@ -180,6 +181,23 @@ void CameraApp::AnimateMaterials(const GameTimer& gt)
 {
 }
 
+void CameraApp::UpdateCamera(const GameTimer& gt)
+{
+    using namespace DirectX;
+    // Convert Spherical to Cartesian coordinates.
+    eyePos.x = radius * sinf(phi) * cosf(theta);
+    eyePos.z = radius * sinf(phi) * sinf(theta);
+    eyePos.y = radius * cosf(phi);
+
+    // Build the view matrix.
+    XMVECTOR pos = XMVectorSet(eyePos.x, eyePos.y, eyePos.z, 1.0f);
+    XMVECTOR target = XMVectorZero();
+    XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+
+    XMMATRIX view = XMMatrixLookAtLH(pos, target, up);
+    XMStoreFloat4x4(&this->view, view);
+}
+
 void CameraApp::UpdateObjectCBs(const GameTimer& gf)
 {
     auto currObjectCB = currFrameResource->ObjectCB.get();
@@ -195,6 +213,7 @@ void CameraApp::UpdateObjectCBs(const GameTimer& gf)
             ObjectConstants objConstants;
             XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(world));
             XMStoreFloat4x4(&objConstants.TexTransform, XMMatrixTranspose(texTransform));
+            			objConstants.MaterialIndex = e->Mat->MatCBIndex;
 
             currObjectCB->CopyData(e->ObjCBIndex, objConstants);
 
@@ -397,7 +416,7 @@ void CameraApp::BuildShadersAndInputLayout()
 void CameraApp::BuildShapeGeometry()
 {
     GeometryGenerator geoGen;
-    GeometryGenerator::MeshData box = geoGen.CreateBox(1.5f, 0.5f, 1.5f, 3);
+    GeometryGenerator::MeshData box = geoGen.CreateBox(1.0f, 1.0f, 1.0f, 3);
     GeometryGenerator::MeshData grid = geoGen.CreateGrid(20.0f, 30.0f, 60, 40);
     GeometryGenerator::MeshData sphere = geoGen.CreateSphere(0.5f, 20, 20);
     GeometryGenerator::MeshData cylinder = geoGen.CreateCylinder(0.5f, 0.3f, 3.0f, 20, 20);
@@ -457,24 +476,28 @@ void CameraApp::BuildShapeGeometry()
     {
         vertices[k].Pos = box.Vertices[i].Position;
         vertices[k].Normal = box.Vertices[i].Normal;
+        vertices[k].TexC = box.Vertices[i].TexC;
     }
 
     for (size_t i = 0; i < grid.Vertices.size(); ++i, ++k)
     {
         vertices[k].Pos = grid.Vertices[i].Position;
         vertices[k].Normal = grid.Vertices[i].Normal;
+        vertices[k].TexC = grid.Vertices[i].TexC;
     }
 
     for (size_t i = 0; i < sphere.Vertices.size(); ++i, ++k)
     {
         vertices[k].Pos = sphere.Vertices[i].Position;
         vertices[k].Normal = sphere.Vertices[i].Normal;
+        vertices[k].TexC = sphere.Vertices[i].TexC;
     }
 
     for (size_t i = 0; i < cylinder.Vertices.size(); ++i, ++k)
     {
         vertices[k].Pos = cylinder.Vertices[i].Position;
         vertices[k].Normal = cylinder.Vertices[i].Normal;
+        vertices[k].TexC = cylinder.Vertices[i].TexC;
     }
 
     std::vector<std::uint16_t> indices;
@@ -596,10 +619,10 @@ void CameraApp::BuildRenderItems()
     using namespace DirectX;
 
     auto boxRitem = std::make_unique<RenderItem>();
-    XMStoreFloat4x4(&boxRitem->World, XMMatrixScaling(2.0f, 2.0f, 2.0f) * XMMatrixTranslation(0.0f, 0.5f, 0.0f));
+    XMStoreFloat4x4(&boxRitem->World, XMMatrixScaling(2.0f, 2.0f, 2.0f) * XMMatrixTranslation(0.0f, 1.0f, 0.0f));
     XMStoreFloat4x4(&boxRitem->TexTransform, XMMatrixScaling(1.0f, 1.0f, 1.0f));
     boxRitem->ObjCBIndex = 0;
-    boxRitem->Mat = materials["stone0"].get();
+    boxRitem->Mat = materials["crate0"].get();
     boxRitem->Geo = geometries["shapeGeo"].get();
     boxRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
     boxRitem->IndexCount = boxRitem->Geo->DrawArgs["box"].IndexCount;

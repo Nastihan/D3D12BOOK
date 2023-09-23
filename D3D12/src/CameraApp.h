@@ -7,6 +7,7 @@
 struct RenderItem
 {
 	RenderItem() = default;
+	RenderItem(const RenderItem& rhs) = delete;
 
 	DirectX::XMFLOAT4X4 World = MathHelper::Identity4x4();
 	DirectX::XMFLOAT4X4 TexTransform = MathHelper::Identity4x4();
@@ -46,6 +47,7 @@ private:
 
 	void OnKeyboardInput(const GameTimer& gt);
 	void AnimateMaterials(const GameTimer& gt);
+	void UpdateCamera(const GameTimer& gt);
 	void UpdateObjectCBs(const GameTimer& gt);
 	void UpdateMaterialBuffer(const GameTimer& gt);
 	void UpdateMainPassCB(const GameTimer& gt);
@@ -98,7 +100,7 @@ private:
 
 	float theta = 1.5f * DirectX::XM_PI;
 	float phi = 2.3f * DirectX::XM_PI;
-	float radius = 15.0f;
+	float radius = 25.0f;
 
 	POINT lastMousePos;
 };
