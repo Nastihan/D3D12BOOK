@@ -59,7 +59,10 @@ private:
 	void BuildFrameResources();
 	void BuildMaterials();
 	void BuildRenderItems();
-	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& rItems);
+	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& rItems); \
+
+	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6>  GetStaticSamplers();
+
 
 private:
 	std::vector<std::unique_ptr<FrameResource>> frameResources;

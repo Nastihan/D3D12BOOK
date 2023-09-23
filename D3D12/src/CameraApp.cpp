@@ -263,28 +263,28 @@ void CameraApp::LoadTextures()
 {
     auto bricksTex = std::make_unique<Texture>();
     bricksTex->Name = "bricksTex";
-    bricksTex->Filename = L"../../Textures/bricks.dds";
+    bricksTex->Filename = L"Textures/bricks.dds";
     ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(pDevice.Get(),
         pCommandList.Get(), bricksTex->Filename.c_str(),
         bricksTex->Resource, bricksTex->UploadHeap));
 
     auto stoneTex = std::make_unique<Texture>();
     stoneTex->Name = "stoneTex";
-    stoneTex->Filename = L"../../Textures/stone.dds";
+    stoneTex->Filename = L"Textures/stone.dds";
     ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(pDevice.Get(),
         pCommandList.Get(), stoneTex->Filename.c_str(),
         stoneTex->Resource, stoneTex->UploadHeap));
 
     auto tileTex = std::make_unique<Texture>();
     tileTex->Name = "tileTex";
-    tileTex->Filename = L"../../Textures/tile.dds";
+    tileTex->Filename = L"Textures/tile.dds";
     ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(pDevice.Get(),
         pCommandList.Get(), tileTex->Filename.c_str(),
         tileTex->Resource, tileTex->UploadHeap));
 
     auto crateTex = std::make_unique<Texture>();
     crateTex->Name = "crateTex";
-    crateTex->Filename = L"../../Textures/WoodCrate01.dds";
+    crateTex->Filename = L"Textures/WoodCrate01.dds";
     ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(pDevice.Get(),
         pCommandList.Get(), crateTex->Filename.c_str(),
         crateTex->Resource, crateTex->UploadHeap));
@@ -304,10 +304,12 @@ void CameraApp::BuildRootSignature()
     rootParams[0].InitAsConstantBufferView(0U);
     rootParams[1].InitAsConstantBufferView(1U);
     rootParams[2].InitAsShaderResourceView(0u, 1u);
-    rootParams->InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_PIXEL);
+    rootParams[3].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_PIXEL);
+
+    auto samplers = GetStaticSamplers();
 
     CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc((UINT)std::size(rootParams), rootParams,
-        0U, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+        samplers.size(), samplers.data(), D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
     Microsoft::WRL::ComPtr<ID3DBlob> rootSigBlob = nullptr;
     Microsoft::WRL::ComPtr<ID3DBlob> errorBlob = nullptr;
@@ -343,7 +345,7 @@ void CameraApp::BuildDescriptorHeaps()
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
     srvDesc.Format = bricksTex->GetDesc().Format;
-    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
     srvDesc.Texture2D.MostDetailedMip = 0;
     srvDesc.Texture2D.MipLevels = bricksTex->GetDesc().MipLevels;
     srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
@@ -504,80 +506,6 @@ void CameraApp::BuildShapeGeometry()
     geometries[geo->Name] = std::move(geo);
 }
 
-void CameraApp::BuildSkullGeometry()
-{
-    std::ifstream fin("Models/skull.txt");
-
-    if (!fin)
-    {
-        MessageBox(0, L"Models/skull.txt not found.", 0, 0);
-        return;
-    }
-
-    UINT vcount = 0;
-    UINT tcount = 0;
-    std::string ignore;
-
-    fin >> ignore >> vcount;
-    fin >> ignore >> tcount;
-    fin >> ignore >> ignore >> ignore >> ignore;
-
-    std::vector<Vertex> vertices(vcount);
-    for (UINT i = 0; i < vcount; ++i)
-    {
-        fin >> vertices[i].Pos.x >> vertices[i].Pos.y >> vertices[i].Pos.z;
-        fin >> vertices[i].Normal.x >> vertices[i].Normal.y >> vertices[i].Normal.z;
-    }
-
-    fin >> ignore;
-    fin >> ignore;
-    fin >> ignore;
-
-    std::vector<std::int32_t> indices(3 * tcount);
-    for (UINT i = 0; i < tcount; ++i)
-    {
-        fin >> indices[i * 3 + 0] >> indices[i * 3 + 1] >> indices[i * 3 + 2];
-    }
-
-    fin.close();
-
-    //
-    // Pack the indices of all the meshes into one index buffer.
-    //
-
-    const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
-
-    const UINT ibByteSize = (UINT)indices.size() * sizeof(std::int32_t);
-
-    auto geo = std::make_unique<MeshGeometry>();
-    geo->Name = "skullGeo";
-
-    ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->VertexBufferCPU));
-    CopyMemory(geo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
-
-    ThrowIfFailed(D3DCreateBlob(ibByteSize, &geo->IndexBufferCPU));
-    CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
-
-    geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(pDevice.Get(),
-        pCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
-
-    geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(pDevice.Get(),
-        pCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
-
-    geo->VertexByteStride = sizeof(Vertex);
-    geo->VertexBufferByteSize = vbByteSize;
-    geo->IndexFormat = DXGI_FORMAT_R32_UINT;
-    geo->IndexBufferByteSize = ibByteSize;
-
-    SubmeshGeometry submesh;
-    submesh.IndexCount = (UINT)indices.size();
-    submesh.StartIndexLocation = 0;
-    submesh.BaseVertexLocation = 0;
-
-    geo->DrawArgs["skull"] = submesh;
-
-    geometries[geo->Name] = std::move(geo);
-}
 
 
 void CameraApp::BuildPSOs()
@@ -683,20 +611,8 @@ void CameraApp::BuildRenderItems()
     gridRitem->BaseVertexLocation = gridRitem->Geo->DrawArgs["grid"].BaseVertexLocation;
     allRItems.push_back(std::move(gridRitem));
 
-    auto skullRitem = std::make_unique<RenderItem>();
-    XMStoreFloat4x4(&skullRitem->World, XMMatrixScaling(0.5f, 0.5f, 0.5f) * XMMatrixTranslation(0.0f, 1.0f, 0.0f));
-    skullRitem->TexTransform = MathHelper::Identity4x4();
-    skullRitem->ObjCBIndex = 2;
-    skullRitem->Mat = materials["skullMat"].get();
-    skullRitem->Geo = geometries["skullGeo"].get();
-    skullRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-    skullRitem->IndexCount = skullRitem->Geo->DrawArgs["skull"].IndexCount;
-    skullRitem->StartIndexLocation = skullRitem->Geo->DrawArgs["skull"].StartIndexLocation;
-    skullRitem->BaseVertexLocation = skullRitem->Geo->DrawArgs["skull"].BaseVertexLocation;
-    allRItems.push_back(std::move(skullRitem));
-
     XMMATRIX brickTexTransform = XMMatrixScaling(1.0f, 1.0f, 1.0f);
-    UINT objCBIndex = 3;
+    UINT objCBIndex = 2;
     for (int i = 0; i < 5; ++i)
     {
         auto leftCylRitem = std::make_unique<RenderItem>();
@@ -764,10 +680,8 @@ void CameraApp::BuildRenderItems()
 void CameraApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& rItems)
 {
     UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
-    UINT matCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(MaterialConstants));
 
     auto objectCB = currFrameResource->ObjectCB->Resource();
-    auto matCB = currFrameResource->MaterialCB->Resource();
 
     // For each render item...
     for (size_t i = 0; i < rItems.size(); ++i)
@@ -779,13 +693,67 @@ void CameraApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::v
         cmdList->IASetPrimitiveTopology(ri->PrimitiveType);
 
         D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objectCB->GetGPUVirtualAddress() + ri->ObjCBIndex * objCBByteSize;
-        D3D12_GPU_VIRTUAL_ADDRESS matCBAddress = matCB->GetGPUVirtualAddress() + ri->Mat->MatCBIndex * matCBByteSize;
 
         cmdList->SetGraphicsRootConstantBufferView(0, objCBAddress);
-        cmdList->SetGraphicsRootConstantBufferView(1, matCBAddress);
-        int t = 4;
+        
 
         cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
     }
 }
 
+std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> CameraApp::GetStaticSamplers()
+{
+    // Applications usually only need a handful of samplers.  So just define them all up front
+    // and keep them available as part of the root signature.  
+
+    const CD3DX12_STATIC_SAMPLER_DESC pointWrap(
+        0, // shaderRegister
+        D3D12_FILTER_MIN_MAG_MIP_POINT, // filter
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
+
+    const CD3DX12_STATIC_SAMPLER_DESC pointClamp(
+        1, // shaderRegister
+        D3D12_FILTER_MIN_MAG_MIP_POINT, // filter
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP); // addressW
+
+    const CD3DX12_STATIC_SAMPLER_DESC linearWrap(
+        2, // shaderRegister
+        D3D12_FILTER_MIN_MAG_MIP_LINEAR, // filter
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
+
+    const CD3DX12_STATIC_SAMPLER_DESC linearClamp(
+        3, // shaderRegister
+        D3D12_FILTER_MIN_MAG_MIP_LINEAR, // filter
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP); // addressW
+
+    const CD3DX12_STATIC_SAMPLER_DESC anisotropicWrap(
+        4, // shaderRegister
+        D3D12_FILTER_ANISOTROPIC, // filter
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressW
+        0.0f,                             // mipLODBias
+        8);                               // maxAnisotropy
+
+    const CD3DX12_STATIC_SAMPLER_DESC anisotropicClamp(
+        5, // shaderRegister
+        D3D12_FILTER_ANISOTROPIC, // filter
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressW
+        0.0f,                              // mipLODBias
+        8);                                // maxAnisotropy
+
+    return {
+        pointWrap, pointClamp,
+        linearWrap, linearClamp,
+        anisotropicWrap, anisotropicClamp };
+}

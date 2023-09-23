@@ -1,5 +1,5 @@
 #include <Windows.h>
-#include "LitColumnsApp.h"
+#include "CameraApp.h"
 
 const int gNumFrameResources = 3;
 
@@ -11,7 +11,7 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
 	try
 	{
-		LitColumnsApp app(hInstance);
+		CameraApp app(hInstance);
 		if (!app.Initialize())
 		{
 			return 0;
