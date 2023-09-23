@@ -4,8 +4,11 @@ cbuffer cbPerObject : register(b0)
 {
     float4x4 gWorld;
     float4x4 gTexTransform;
+    uint gMaterialIndex;
+    uint gObjPad0;
+    uint gObjPad1;
+    uint gObjPad2;
 };
-
 
 cbuffer cbPass : register(b1)
 {
@@ -33,15 +36,19 @@ cbuffer cbPass : register(b1)
     Light gLights[MaxLights];
 };
 
-cbuffer cbMaterial : register(b2)
+struct MaterialData
 {
-    float4 gDiffuseAlbedo;
-    float3 gFresnelR0;
-    float gRoughness;
-    float4x4 gMatTransform;
-};
+    float4 DiffuseAlbedo;
+    float3 FresnelR0;
+    float Roughness;
+    float4x4 MatTransform;
+    uint DiffuseMapIndex;
+    uint MatPad0;
+    uint MatPad1;
+    uint MatPad2;
+}; 
+StructuredBuffer<MaterialData> materialData : register(t0, space1);
 
- 
 struct VertexIn
 {
     float3 PosL : POSITION;
@@ -72,7 +79,7 @@ VertexOut main(VertexIn vin)
     vout.PosH = mul(posW, gViewProj);
     
     float4 texC = float4(vin.TexC, 0.0f, 1.0f);
-    vout.TexC = mul(texC, gMatTransform).xy;
+    vout.TexC = mul(texC, materialData[gMaterialIndex].MatTransform).xy;
 
     return vout;
 }

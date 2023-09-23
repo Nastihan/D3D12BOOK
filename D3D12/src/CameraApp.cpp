@@ -94,10 +94,18 @@ void CameraApp::Draw(const GameTimer& gt)
     pCommandList->OMSetRenderTargets(
         1, &CurrentBackBufferView(), true, &DepthStencilView());
 
+    ID3D12DescriptorHeap* descHeaps[] = { pSrvDescriptorHeap.Get() };
+    pCommandList->SetDescriptorHeaps(std::size(descHeaps), descHeaps);
+
     pCommandList->SetGraphicsRootSignature(pRootSignature.Get());
 
     auto passCB = currFrameResource->PassCB->Resource();
-    pCommandList->SetGraphicsRootConstantBufferView(2, passCB->GetGPUVirtualAddress());
+    pCommandList->SetGraphicsRootConstantBufferView(1, passCB->GetGPUVirtualAddress());
+
+    auto matBuffer = currFrameResource->MaterialBuffer->Resource();
+    pCommandList->SetGraphicsRootShaderResourceView(2, matBuffer->GetGPUVirtualAddress());
+
+    pCommandList->SetGraphicsRootDescriptorTable(3, pSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 
     DrawRenderItems(pCommandList.Get(), opaqueRItems);
 
@@ -549,7 +557,7 @@ void CameraApp::BuildMaterials()
     bricks0->Name = "bricks0";
     bricks0->MatCBIndex = 0;
     bricks0->DiffuseSrvHeapIndex = 0;
-    bricks0->DiffuseAlbedo = XMFLOAT4(Colors::ForestGreen);
+    bricks0->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
     bricks0->FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
     bricks0->Roughness = 0.1f;
 
@@ -557,7 +565,7 @@ void CameraApp::BuildMaterials()
     stone0->Name = "stone0";
     stone0->MatCBIndex = 1;
     stone0->DiffuseSrvHeapIndex = 1;
-    stone0->DiffuseAlbedo = XMFLOAT4(Colors::LightSteelBlue);
+    stone0->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
     stone0->FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05f);
     stone0->Roughness = 0.3f;
 
@@ -565,22 +573,22 @@ void CameraApp::BuildMaterials()
     tile0->Name = "tile0";
     tile0->MatCBIndex = 2;
     tile0->DiffuseSrvHeapIndex = 2;
-    tile0->DiffuseAlbedo = XMFLOAT4(Colors::LightGray);
+    tile0->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
     tile0->FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
-    tile0->Roughness = 0.2f;
+    tile0->Roughness = 0.3f;
 
-    auto skullMat = std::make_unique<Material>();
-    skullMat->Name = "skullMat";
-    skullMat->MatCBIndex = 3;
-    skullMat->DiffuseSrvHeapIndex = 3;
-    skullMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    skullMat->FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05f);
-    skullMat->Roughness = 0.3f;
+    auto crate0 = std::make_unique<Material>();
+    crate0->Name = "crate0";
+    crate0->MatCBIndex = 3;
+    crate0->DiffuseSrvHeapIndex = 3;
+    crate0->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    crate0->FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05f);
+    crate0->Roughness = 0.2f;
 
     materials["bricks0"] = std::move(bricks0);
     materials["stone0"] = std::move(stone0);
     materials["tile0"] = std::move(tile0);
-    materials["skullMat"] = std::move(skullMat);
+    materials["crate0"] = std::move(crate0);
 }
 
 void CameraApp::BuildRenderItems()
