@@ -59,14 +59,11 @@
     <ClCompile Include="src\Common\Waves.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="src\TreeBillboardsApp.cpp">
-      <Filter>Source Files\Apps</Filter>
-    </ClCompile>
-    <ClCompile Include="src\BlurApp.cpp">
-      <Filter>Source Files\Apps</Filter>
-    </ClCompile>
     <ClCompile Include="src\BlurFilter.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\CameraApp.cpp">
+      <Filter>Source Files\Apps</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -106,14 +103,11 @@
     <ClInclude Include="src\FrameResource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\TreeBillboardsApp.h">
-      <Filter>Header Files\Apps</Filter>
-    </ClInclude>
-    <ClInclude Include="src\BlurApp.h">
-      <Filter>Header Files\Apps</Filter>
-    </ClInclude>
     <ClInclude Include="src\BlurFilter.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\CameraApp.h">
+      <Filter>Header Files\Apps</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

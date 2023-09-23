@@ -1,17 +1,17 @@
-#include "LitColumnsApp.h"
+#include "CameraApp.h"
 #include "Common/GeometryGenerator.h"
 
 
-LitColumnsApp::LitColumnsApp(HINSTANCE hInstance)
+CameraApp::CameraApp(HINSTANCE hInstance)
     :D3DApp(hInstance)
 {
 }
 
-LitColumnsApp::~LitColumnsApp()
+CameraApp::~CameraApp()
 {
 }
 
-bool LitColumnsApp::Initialize()
+bool CameraApp::Initialize()
 {
     if (!D3DApp::Initialize())
     {
@@ -43,7 +43,7 @@ bool LitColumnsApp::Initialize()
     return true;
 }
 
-void LitColumnsApp::OnResize()
+void CameraApp::OnResize()
 {
     D3DApp::OnResize();
 
@@ -51,7 +51,7 @@ void LitColumnsApp::OnResize()
     DirectX::XMStoreFloat4x4(&proj, P);
 }
 
-void LitColumnsApp::Update(const GameTimer& gt)
+void CameraApp::Update(const GameTimer& gt)
 {
     OnKeyboardInput(gt);
     UpdateCamera(gt);
@@ -73,7 +73,7 @@ void LitColumnsApp::Update(const GameTimer& gt)
     UpdateMainPassCB(gt);
 }
 
-void LitColumnsApp::Draw(const GameTimer& gt)
+void CameraApp::Draw(const GameTimer& gt)
 {
     auto cmdListAlloc = currFrameResource->pCmdListAlloc;
     ThrowIfFailed(cmdListAlloc->Reset());
@@ -118,7 +118,7 @@ void LitColumnsApp::Draw(const GameTimer& gt)
     pCommandQueue->Signal(pFence.Get(), currentFence);
 }
 
-void LitColumnsApp::OnMouseDown(WPARAM btnState, int x, int y)
+void CameraApp::OnMouseDown(WPARAM btnState, int x, int y)
 {
     lastMousePos.x = x;
     lastMousePos.y = y;
@@ -126,12 +126,12 @@ void LitColumnsApp::OnMouseDown(WPARAM btnState, int x, int y)
     SetCapture(mainHWnd);
 }
 
-void LitColumnsApp::OnMouseUp(WPARAM btnState, int x, int y)
+void CameraApp::OnMouseUp(WPARAM btnState, int x, int y)
 {
     ReleaseCapture();
 }
 
-void LitColumnsApp::OnMouseMove(WPARAM btnState, int x, int y)
+void CameraApp::OnMouseMove(WPARAM btnState, int x, int y)
 {
     using namespace DirectX;
     if ((btnState & MK_LBUTTON) != 0)
@@ -164,11 +164,11 @@ void LitColumnsApp::OnMouseMove(WPARAM btnState, int x, int y)
     lastMousePos.y = y;
 }
 
-void LitColumnsApp::OnKeyboardInput(const GameTimer& gt)
+void CameraApp::OnKeyboardInput(const GameTimer& gt)
 {
 }
 
-void LitColumnsApp::UpdateCamera(const GameTimer& gt)
+void CameraApp::UpdateCamera(const GameTimer& gt)
 {
     eyePos.x = radius * sinf(phi) * cosf(theta);
     eyePos.z = radius * sinf(phi) * sinf(theta);
@@ -183,11 +183,11 @@ void LitColumnsApp::UpdateCamera(const GameTimer& gt)
     DirectX::XMStoreFloat4x4(&this->view, view);
 }
 
-void LitColumnsApp::AnimateMaterials(const GameTimer& gt)
+void CameraApp::AnimateMaterials(const GameTimer& gt)
 {
 }
 
-void LitColumnsApp::UpdateObjectCBs(const GameTimer& gf)
+void CameraApp::UpdateObjectCBs(const GameTimer& gf)
 {
     auto currObjectCB = currFrameResource->ObjectCB.get();
     for (auto& e : allRItems)
@@ -211,7 +211,7 @@ void LitColumnsApp::UpdateObjectCBs(const GameTimer& gf)
     }
 }
 
-void LitColumnsApp::UpdateMaterialCBs(const GameTimer& gt)
+void CameraApp::UpdateMaterialCBs(const GameTimer& gt)
 {
     using namespace DirectX;
 
@@ -240,7 +240,7 @@ void LitColumnsApp::UpdateMaterialCBs(const GameTimer& gt)
 
 }
 
-void LitColumnsApp::UpdateMainPassCB(const GameTimer& gt)
+void CameraApp::UpdateMainPassCB(const GameTimer& gt)
 {
     DirectX::XMMATRIX view = XMLoadFloat4x4(&this->view);
     DirectX::XMMATRIX proj = XMLoadFloat4x4(&this->proj);
@@ -275,7 +275,7 @@ void LitColumnsApp::UpdateMainPassCB(const GameTimer& gt)
     currPassCB->CopyData(0, mainPassCB);
 }
 
-void LitColumnsApp::BuildRootSignature()
+void CameraApp::BuildRootSignature()
 {
     CD3DX12_ROOT_PARAMETER rootParams[3]{};
     rootParams[0].InitAsConstantBufferView(0U);
@@ -300,7 +300,7 @@ void LitColumnsApp::BuildRootSignature()
         rootSigBlob->GetBufferSize(), IID_PPV_ARGS(&pRootSignature)));
 }
 
-void LitColumnsApp::BuildShadersAndInputLayout()
+void CameraApp::BuildShadersAndInputLayout()
 {
     ThrowIfFailed(D3DReadFileToBlob(L"Shaders\\ShaderBins\\DefaultVS.cso", shaders["standardVS"].GetAddressOf()));
     ThrowIfFailed(D3DReadFileToBlob(L"Shaders\\ShaderBins\\DefaultPS.cso", shaders["opaquePS"].GetAddressOf()));
@@ -308,11 +308,12 @@ void LitColumnsApp::BuildShadersAndInputLayout()
     inputLayout =
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "NORMAL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+        { "NORMAL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
     };
 }
 
-void LitColumnsApp::BuildShapeGeometry()
+void CameraApp::BuildShapeGeometry()
 {
     GeometryGenerator geoGen;
     GeometryGenerator::MeshData box = geoGen.CreateBox(1.5f, 0.5f, 1.5f, 3);
@@ -432,7 +433,7 @@ void LitColumnsApp::BuildShapeGeometry()
     geometries[geo->Name] = std::move(geo);
 }
 
-void LitColumnsApp::BuildSkullGeometry()
+void CameraApp::BuildSkullGeometry()
 {
     std::ifstream fin("Models/skull.txt");
 
@@ -508,7 +509,7 @@ void LitColumnsApp::BuildSkullGeometry()
 }
 
 
-void LitColumnsApp::BuildPSOs()
+void CameraApp::BuildPSOs()
 {
     D3D12_GRAPHICS_PIPELINE_STATE_DESC opaquePsoDesc;
 
@@ -534,7 +535,7 @@ void LitColumnsApp::BuildPSOs()
 
 }
 
-void LitColumnsApp::BuildFrameResources()
+void CameraApp::BuildFrameResources()
 {
     for (int i = 0; i < gNumFrameResources; ++i)
     {
@@ -542,7 +543,7 @@ void LitColumnsApp::BuildFrameResources()
     }
 }
 
-void LitColumnsApp::BuildMaterials()
+void CameraApp::BuildMaterials()
 {
     using namespace DirectX;
     auto bricks0 = std::make_unique<Material>();
@@ -583,7 +584,7 @@ void LitColumnsApp::BuildMaterials()
     materials["skullMat"] = std::move(skullMat);
 }
 
-void LitColumnsApp::BuildRenderItems()
+void CameraApp::BuildRenderItems()
 {
     using namespace DirectX;
 
@@ -689,7 +690,7 @@ void LitColumnsApp::BuildRenderItems()
         opaqueRItems.push_back(e.get());
 }
 
-void LitColumnsApp::DrawRendeItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& rItems)
+void CameraApp::DrawRendeItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& rItems)
 {
     UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
     UINT matCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(MaterialConstants));

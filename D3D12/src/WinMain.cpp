@@ -1,5 +1,5 @@
 #include <Windows.h>
-#include "BlurApp.h"
+#include "LitColumnsApp.h"
 
 const int gNumFrameResources = 3;
 
@@ -11,7 +11,7 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
 	try
 	{
-		BlurApp app(hInstance);
+		LitColumnsApp app(hInstance);
 		if (!app.Initialize())
 		{
 			return 0;

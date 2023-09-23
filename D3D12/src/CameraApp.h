@@ -25,13 +25,13 @@ struct RenderItem
 	int BaseVertexLocation = 0;
 };
 
-class LitColumnsApp : public D3DApp
+class CameraApp : public D3DApp
 {
 public:
-	LitColumnsApp(HINSTANCE hInstance);
-	LitColumnsApp(LitColumnsApp& rhs) = delete;
-	LitColumnsApp& operator=(const LitColumnsApp& rhs) = delete;
-	~LitColumnsApp();
+	CameraApp(HINSTANCE hInstance);
+	CameraApp(CameraApp& rhs) = delete;
+	CameraApp& operator=(const CameraApp& rhs) = delete;
+	~CameraApp();
 
 	virtual bool Initialize() override;
 
