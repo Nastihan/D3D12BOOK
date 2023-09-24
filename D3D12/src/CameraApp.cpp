@@ -772,7 +772,7 @@ std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> CameraApp::GetStaticSamplers()
         D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
         D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressW
         0.0f,                             // mipLODBias
-        8);                               // maxAnisotropy
+        16U);                               // maxAnisotropy
 
     const CD3DX12_STATIC_SAMPLER_DESC anisotropicClamp(
         5, // shaderRegister
@@ -781,7 +781,7 @@ std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> CameraApp::GetStaticSamplers()
         D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
         D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressW
         0.0f,                              // mipLODBias
-        8);                                // maxAnisotropy
+        16U);                                // maxAnisotropy
 
     return {
         pointWrap, pointClamp,
