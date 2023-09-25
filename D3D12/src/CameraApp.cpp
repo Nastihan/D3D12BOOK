@@ -21,7 +21,7 @@ bool CameraApp::Initialize()
     // Reset the command list to prep for initialization commands.
     ThrowIfFailed(pCommandList->Reset(pCmdListAlloc.Get(), nullptr));
 
-    cam.SetPos({0.0f, 2.0f, -5.0f});
+    cam.SetPosition({0.0f, 2.0f, -5.0f});
 
     cbvSrvDescriptorSize = pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
@@ -51,14 +51,12 @@ void CameraApp::OnResize()
     D3DApp::OnResize();
 
 
-
-    cam.SetProj(45.0f, GetAR(), 0.5f, 400.0f);
+    cam.SetLens(45.0f, GetAR(), 0.5f, 400.0f);
 }
 
 void CameraApp::Update(const GameTimer& gt)
 {
     OnKeyboardInput(gt);
-    UpdateCamera(gt);
 
     currFrameResourceIndex = (currFrameResourceIndex + 1) % gNumFrameResources;
     currFrameResource = frameResources[currFrameResourceIndex].get();
@@ -152,24 +150,8 @@ void CameraApp::OnMouseMove(WPARAM btnState, int x, int y)
         float dx = XMConvertToRadians(0.25f * static_cast<float>(x - lastMousePos.x));
         float dy = XMConvertToRadians(0.25f * static_cast<float>(y - lastMousePos.y));
 
-        // Update angles based on input to orbit camera around box.
-        theta += dx;
-        phi += dy;
-
-        // Restrict the angle mPhi.
-        phi = MathHelper::Clamp(phi, 0.1f, MathHelper::Pi - 0.1f);
-    }
-    else if ((btnState & MK_RBUTTON) != 0)
-    {
-        // Make each pixel correspond to 0.005 unit in the scene.
-        float dx = 0.05f * static_cast<float>(x - lastMousePos.x);
-        float dy = 0.05f * static_cast<float>(y - lastMousePos.y);
-
-        // Update the camera radius based on input.
-        radius += dx - dy;
-
-        // Restrict the radius.
-        radius = MathHelper::Clamp(radius, 5.0f, 150.0f);
+        cam.Pitch(dy);
+        cam.RotateY(dx);
     }
 
     lastMousePos.x = x;
@@ -178,27 +160,25 @@ void CameraApp::OnMouseMove(WPARAM btnState, int x, int y)
 
 void CameraApp::OnKeyboardInput(const GameTimer& gt)
 {
+    const float dt = gt.DeltaTime();
+
+    if (GetAsyncKeyState('W') & 0x8000)
+        cam.Walk(10.0f * dt);
+
+    if (GetAsyncKeyState('S') & 0x8000)
+        cam.Walk(-10.0f * dt);
+
+    if (GetAsyncKeyState('A') & 0x8000)
+        cam.Strafe(-10.0f * dt);
+
+    if (GetAsyncKeyState('D') & 0x8000)
+        cam.Strafe(10.0f * dt);
+
+    cam.UpdateViewMatrix();
 }
 
 void CameraApp::AnimateMaterials(const GameTimer& gt)
 {
-}
-
-void CameraApp::UpdateCamera(const GameTimer& gt)
-{
-    using namespace DirectX;
-    // Convert Spherical to Cartesian coordinates.
-    eyePos.x = radius * sinf(phi) * cosf(theta);
-    eyePos.z = radius * sinf(phi) * sinf(theta);
-    eyePos.y = radius * cosf(phi);
-
-    // Build the view matrix.
-    XMVECTOR pos = XMVectorSet(eyePos.x, eyePos.y, eyePos.z, 1.0f);
-    XMVECTOR target = XMVectorZero();
-    XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-
-    XMMATRIX view = XMMatrixLookAtLH(pos, target, up);
-    XMStoreFloat4x4(&this->view, cam.GetViewM());
 }
 
 void CameraApp::UpdateObjectCBs(const GameTimer& gf)
@@ -256,8 +236,8 @@ void CameraApp::UpdateMaterialBuffer(const GameTimer& gt)
 
 void CameraApp::UpdateMainPassCB(const GameTimer& gt)
 {
-    DirectX::XMMATRIX view = XMLoadFloat4x4(&cam.GetView());
-    DirectX::XMMATRIX proj = XMLoadFloat4x4(&cam.GetProj());
+    DirectX::XMMATRIX view = cam.GetView();
+    DirectX::XMMATRIX proj = cam.GetProj();
 
     DirectX::XMMATRIX viewProj = XMMatrixMultiply(view, proj);
     DirectX::XMMATRIX invView = XMMatrixInverse(&XMMatrixDeterminant(view), view);
@@ -270,7 +250,7 @@ void CameraApp::UpdateMainPassCB(const GameTimer& gt)
     DirectX::XMStoreFloat4x4(&mainPassCB.InvProj, XMMatrixTranspose(invProj));
     DirectX::XMStoreFloat4x4(&mainPassCB.ViewProj, XMMatrixTranspose(viewProj));
     DirectX::XMStoreFloat4x4(&mainPassCB.InvViewProj, XMMatrixTranspose(invViewProj));
-    mainPassCB.EyePosW = eyePos;
+    mainPassCB.EyePosW = cam.GetPosition3f();
     mainPassCB.RenderTargetSize = DirectX::XMFLOAT2((float)clientWidth, (float)clientHeight);
     mainPassCB.InvRenderTargetSize = DirectX::XMFLOAT2(1.0f / clientWidth, 1.0f / clientHeight);
     mainPassCB.NearZ = 1.0f;
