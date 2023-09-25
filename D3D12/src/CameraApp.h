@@ -2,7 +2,7 @@
 #include "Common/D3DApp.h"
 #include "UploadBuffer.h"
 #include "FrameResource.h"
-#include "Common/Waves.h"
+#include "Camera.h"
 
 struct RenderItem
 {
@@ -64,9 +64,9 @@ private:
 	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& rItems); \
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6>  GetStaticSamplers();
-
-
 private:
+	Camera cam;
+
 	std::vector<std::unique_ptr<FrameResource>> frameResources;
 	FrameResource* currFrameResource = nullptr;
 	int currFrameResourceIndex = 0;

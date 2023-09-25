@@ -21,6 +21,8 @@ bool CameraApp::Initialize()
     // Reset the command list to prep for initialization commands.
     ThrowIfFailed(pCommandList->Reset(pCmdListAlloc.Get(), nullptr));
 
+    cam.SetPos({0.0f, 2.0f, -5.0f});
+
     cbvSrvDescriptorSize = pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
     LoadTextures();
@@ -48,8 +50,9 @@ void CameraApp::OnResize()
 {
     D3DApp::OnResize();
 
-    DirectX::XMMATRIX P = DirectX::XMMatrixPerspectiveFovLH(0.25f * MathHelper::Pi, GetAR(), 1.0f, 1000.0f);
-    DirectX::XMStoreFloat4x4(&proj, P);
+
+
+    cam.SetProj(45.0f, GetAR(), 0.5f, 400.0f);
 }
 
 void CameraApp::Update(const GameTimer& gt)
@@ -195,7 +198,7 @@ void CameraApp::UpdateCamera(const GameTimer& gt)
     XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
     XMMATRIX view = XMMatrixLookAtLH(pos, target, up);
-    XMStoreFloat4x4(&this->view, view);
+    XMStoreFloat4x4(&this->view, cam.GetViewM());
 }
 
 void CameraApp::UpdateObjectCBs(const GameTimer& gf)
@@ -253,8 +256,8 @@ void CameraApp::UpdateMaterialBuffer(const GameTimer& gt)
 
 void CameraApp::UpdateMainPassCB(const GameTimer& gt)
 {
-    DirectX::XMMATRIX view = XMLoadFloat4x4(&this->view);
-    DirectX::XMMATRIX proj = XMLoadFloat4x4(&this->proj);
+    DirectX::XMMATRIX view = XMLoadFloat4x4(&cam.GetView());
+    DirectX::XMMATRIX proj = XMLoadFloat4x4(&cam.GetProj());
 
     DirectX::XMMATRIX viewProj = XMMatrixMultiply(view, proj);
     DirectX::XMMATRIX invView = XMMatrixInverse(&XMMatrixDeterminant(view), view);
