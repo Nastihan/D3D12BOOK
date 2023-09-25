@@ -89,7 +89,7 @@ void CameraApp::Draw(const GameTimer& gt)
     ));
 
     pCommandList->ClearRenderTargetView(
-        CurrentBackBufferView(), DirectX::Colors::AliceBlue, 0, nullptr);
+        CurrentBackBufferView(), DirectX::Colors::MidnightBlue, 0, nullptr);
     pCommandList->ClearDepthStencilView(
         DepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
@@ -257,7 +257,7 @@ void CameraApp::UpdateMainPassCB(const GameTimer& gt)
     mainPassCB.FarZ = 1000.0f;
     mainPassCB.TotalTime = gt.TotalTime();
     mainPassCB.DeltaTime = gt.DeltaTime();
-    mainPassCB.AmbientLight = { 0.25f, 0.25f, 0.35f, 1.0f };
+    mainPassCB.AmbientLight = { 0.05f, 0.05f, 0.10f, 1.0f };
     mainPassCB.Lights[0].Direction = { 0.57735f, -0.57735f, 0.57735f };
     mainPassCB.Lights[0].Strength = { 0.6f, 0.6f, 0.6f };
     mainPassCB.Lights[1].Direction = { -0.57735f, -0.57735f, 0.57735f };
