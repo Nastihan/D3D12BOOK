@@ -110,6 +110,9 @@ void CubeMapApp::Draw(const GameTimer& gt)
 
     pCommandList->SetGraphicsRootDescriptorTable(3, pSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 
+    pCommandList->SetGraphicsRootDescriptorTable(4, CD3DX12_GPU_DESCRIPTOR_HANDLE(pSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart(),
+        3, cbvSrvDescriptorSize));
+
     DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Opaque]);
 
     pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
@@ -277,7 +280,7 @@ void CubeMapApp::LoadTextures()
         "bricksDiffuseMap",
         "tileDiffuseMap",
         "defaultDiffuseMap",
-        //"skyCubeMap"
+        "skyCubeMap"
     };
 
     std::vector<std::wstring> texFilenames =
@@ -285,7 +288,7 @@ void CubeMapApp::LoadTextures()
         L"Textures/bricks2.dds",
         L"Textures/tile.dds",
         L"Textures/white1x1.dds",
-        //L"Textures/grasscube1024.dds"
+        L"Textures/grasscube1024.dds"
     };
 
     for (int i = 0; i < (int)texNames.size(); ++i)
@@ -304,13 +307,16 @@ void CubeMapApp::LoadTextures()
 void CubeMapApp::BuildRootSignature()
 {
     CD3DX12_DESCRIPTOR_RANGE texTable{};
-    texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 0U, 0U);
+    texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3, 1U, 0U);
+    CD3DX12_DESCRIPTOR_RANGE cubeMapTable{};
+    cubeMapTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0U, 0U);
 
-    CD3DX12_ROOT_PARAMETER rootParams[4]{};
+    CD3DX12_ROOT_PARAMETER rootParams[5]{};
     rootParams[0].InitAsConstantBufferView(0U);
     rootParams[1].InitAsConstantBufferView(1U);
     rootParams[2].InitAsShaderResourceView(0u, 1u);
     rootParams[3].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_PIXEL);
+    rootParams[4].InitAsDescriptorTable(1, &cubeMapTable, D3D12_SHADER_VISIBILITY_PIXEL);
 
     auto samplers = GetStaticSamplers();
 
@@ -335,7 +341,7 @@ void CubeMapApp::BuildRootSignature()
 void CubeMapApp::BuildDescriptorHeaps()
 {
     D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc{};
-    srvHeapDesc.NumDescriptors = 3;
+    srvHeapDesc.NumDescriptors = 4;
     srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
     srvHeapDesc.NodeMask = 0;
@@ -346,7 +352,7 @@ void CubeMapApp::BuildDescriptorHeaps()
     auto bricksTex = textures["bricksDiffuseMap"]->Resource;
     auto tileTex = textures["tileDiffuseMap"]->Resource;
     auto whiteTex = textures["defaultDiffuseMap"]->Resource;
-    //auto skyTex = textures["skyCubeMap"]->Resource;
+    auto skyTex = textures["skyCubeMap"]->Resource;
     
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -374,9 +380,9 @@ void CubeMapApp::BuildDescriptorHeaps()
     // next
     descriptorH.Offset(1, cbvSrvDescriptorSize);
 
-   /* srvDesc.Format = crateTex->GetDesc().Format;
-    srvDesc.Texture2D.MipLevels = crateTex->GetDesc().MipLevels;
-    pDevice->CreateShaderResourceView(crateTex.Get(), &srvDesc, descriptorH);*/
+    srvDesc.Format = skyTex->GetDesc().Format;
+    srvDesc.Texture2D.MipLevels = skyTex->GetDesc().MipLevels;
+    pDevice->CreateShaderResourceView(skyTex.Get(), &srvDesc, descriptorH);
 }
 
 void CubeMapApp::BuildShadersAndInputLayout()
@@ -679,26 +685,26 @@ void CubeMapApp::BuildMaterials()
     skullMat->FresnelR0 = XMFLOAT3(0.2f, 0.2f, 0.2f);
     skullMat->Roughness = 0.2f;
 
-   /* auto sky = std::make_unique<Material>();
+    auto sky = std::make_unique<Material>();
     sky->Name = "sky";
     sky->MatCBIndex = 4;
     sky->DiffuseSrvHeapIndex = 3;
     sky->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
     sky->FresnelR0 = XMFLOAT3(0.1f, 0.1f, 0.1f);
-    sky->Roughness = 1.0f;*/
+    sky->Roughness = 1.0f;
 
     materials["bricks0"] = std::move(bricks0);
     materials["tile0"] = std::move(tile0);
     materials["mirror0"] = std::move(mirror0);
     materials["skullMat"] = std::move(skullMat);
-    //materials["sky"] = std::move(sky);
+    materials["sky"] = std::move(sky);
 }
 
 void CubeMapApp::BuildRenderItems()
 {
     using namespace DirectX;
 
-    /*auto skyRitem = std::make_unique<RenderItem>();
+    auto skyRitem = std::make_unique<RenderItem>();
     XMStoreFloat4x4(&skyRitem->World, XMMatrixScaling(5000.0f, 5000.0f, 5000.0f));
     skyRitem->TexTransform = MathHelper::Identity4x4();
     skyRitem->ObjCBIndex = 0;
@@ -710,12 +716,12 @@ void CubeMapApp::BuildRenderItems()
     skyRitem->BaseVertexLocation = skyRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
 
     rItemLayer[(int)RenderLayer::Sky].push_back(skyRitem.get());
-    allRItems.push_back(std::move(skyRitem));*/
+    allRItems.push_back(std::move(skyRitem));
 
     auto boxRitem = std::make_unique<RenderItem>();
     XMStoreFloat4x4(&boxRitem->World, XMMatrixScaling(2.0f, 1.0f, 2.0f) * XMMatrixTranslation(0.0f, 0.5f, 0.0f));
     XMStoreFloat4x4(&boxRitem->TexTransform, XMMatrixScaling(1.0f, 1.0f, 1.0f));
-    boxRitem->ObjCBIndex = 0;
+    boxRitem->ObjCBIndex = 1;
     boxRitem->Mat = materials["bricks0"].get();
     boxRitem->Geo = geometries["shapeGeo"].get();
     boxRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -729,7 +735,7 @@ void CubeMapApp::BuildRenderItems()
     auto skullRitem = std::make_unique<RenderItem>();
     XMStoreFloat4x4(&skullRitem->World, XMMatrixScaling(0.4f, 0.4f, 0.4f) * XMMatrixTranslation(0.0f, 1.0f, 0.0f));
     skullRitem->TexTransform = MathHelper::Identity4x4();
-    skullRitem->ObjCBIndex = 1;
+    skullRitem->ObjCBIndex = 2;
     skullRitem->Mat = materials["skullMat"].get();
     skullRitem->Geo = geometries["skullGeo"].get();
     skullRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -743,7 +749,7 @@ void CubeMapApp::BuildRenderItems()
     auto gridRitem = std::make_unique<RenderItem>();
     gridRitem->World = MathHelper::Identity4x4();
     XMStoreFloat4x4(&gridRitem->TexTransform, XMMatrixScaling(8.0f, 8.0f, 1.0f));
-    gridRitem->ObjCBIndex = 2;
+    gridRitem->ObjCBIndex = 3;
     gridRitem->Mat = materials["tile0"].get();
     gridRitem->Geo = geometries["shapeGeo"].get();
     gridRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -755,7 +761,7 @@ void CubeMapApp::BuildRenderItems()
     allRItems.push_back(std::move(gridRitem));
 
     XMMATRIX brickTexTransform = XMMatrixScaling(1.5f, 2.0f, 1.0f);
-    UINT objCBIndex = 3;
+    UINT objCBIndex = 4;
     for (int i = 0; i < 5; ++i)
     {
         auto leftCylRitem = std::make_unique<RenderItem>();

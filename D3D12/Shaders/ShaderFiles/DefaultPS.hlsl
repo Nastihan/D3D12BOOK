@@ -62,8 +62,8 @@ struct MaterialData
 };
 StructuredBuffer<MaterialData> materialData : register(t0, space1);
 
-
-Texture2D gDiffuseMap[4] : register(t0);
+TextureCube cubeMap : register(t0);
+Texture2D gDiffuseMap[3] : register(t1);
 
 SamplerState gsamPointWrap : register(s0);
 SamplerState gsamPointClamp : register(s1);
