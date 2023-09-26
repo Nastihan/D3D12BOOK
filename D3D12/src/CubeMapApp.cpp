@@ -649,6 +649,7 @@ void CubeMapApp::BuildPSOs()
 
     auto skyMapPsoDesc = opaquePsoDesc;
     skyMapPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+    skyMapPsoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
     skyMapPsoDesc.VS = CD3DX12_SHADER_BYTECODE(shaders["skyVS"].Get());
     skyMapPsoDesc.PS = CD3DX12_SHADER_BYTECODE(shaders["skyPS"].Get());
 
