@@ -89,11 +89,11 @@ private:
 	std::unordered_map<std::string, std::unique_ptr<Texture>> textures;
 	std::unordered_map<std::string, std::unique_ptr<Material>> materials;
 	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3DBlob>> shaders;
-
+	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D12PipelineState>> PSOs;
 
 	std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout;
 
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> opaquePSO = nullptr;
+	//Microsoft::WRL::ComPtr<ID3D12PipelineState> opaquePSO = nullptr;
 
 	// all of the render items
 	std::vector<std::unique_ptr<RenderItem>> allRItems;

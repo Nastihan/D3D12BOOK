@@ -80,7 +80,7 @@ void CubeMapApp::Draw(const GameTimer& gt)
 {
     auto cmdListAlloc = currFrameResource->pCmdListAlloc;
     ThrowIfFailed(cmdListAlloc->Reset());
-    ThrowIfFailed(pCommandList->Reset(cmdListAlloc.Get(), opaquePSO.Get()));
+    ThrowIfFailed(pCommandList->Reset(cmdListAlloc.Get(), PSOs["opaque"].Get()));
 
     pCommandList->RSSetViewports(1, &screenViewport);
     pCommandList->RSSetScissorRects(1, &scissorRect);
@@ -390,6 +390,9 @@ void CubeMapApp::BuildShadersAndInputLayout()
     ThrowIfFailed(D3DReadFileToBlob(L"Shaders\\ShaderBins\\DefaultVS.cso", shaders["standardVS"].GetAddressOf()));
     ThrowIfFailed(D3DReadFileToBlob(L"Shaders\\ShaderBins\\DefaultPS.cso", shaders["opaquePS"].GetAddressOf()));
 
+    shaders["skyVS"] = d3dUtil::CompileShader(L"Shaders\\ShaderFiles\\Sky.hlsl", nullptr, "VS", "vs_5_1");
+    shaders["skyPS"] = d3dUtil::CompileShader(L"Shaders\\ShaderFiles\\Sky.hlsl", nullptr, "PS", "ps_5_1");
+
     inputLayout =
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -638,7 +641,14 @@ void CubeMapApp::BuildPSOs()
     opaquePsoDesc.SampleDesc.Count = m4xMsaaState ? 4 : 1;
     opaquePsoDesc.SampleDesc.Quality = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
     opaquePsoDesc.DSVFormat = depthStencilFormat;
-    ThrowIfFailed(pDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&opaquePSO)));
+    ThrowIfFailed(pDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&PSOs["opaque"])));
+
+    auto skyMapPsoDesc = opaquePsoDesc;
+    skyMapPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+    skyMapPsoDesc.VS = CD3DX12_SHADER_BYTECODE(shaders["skyVS"].Get());
+    skyMapPsoDesc.PS = CD3DX12_SHADER_BYTECODE(shaders["skyPS"].Get());
+
+    ThrowIfFailed(pDevice->CreateGraphicsPipelineState(&skyMapPsoDesc, IID_PPV_ARGS(&PSOs["sky"])));
 
 }
 
