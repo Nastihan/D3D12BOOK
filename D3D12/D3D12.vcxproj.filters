@@ -41,13 +41,7 @@
     <ClCompile Include="src\Common\DDSTextureLoader.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="src\FirstApp.cpp">
-      <Filter>Source Files\Apps</Filter>
-    </ClCompile>
     <ClCompile Include="SRC\COMMON\D3DApp.CPP">
-      <Filter>Source Files\Apps</Filter>
-    </ClCompile>
-    <ClCompile Include="src\BoxApp.cpp">
       <Filter>Source Files\Apps</Filter>
     </ClCompile>
     <ClCompile Include="src\FrameResource.cpp">
@@ -65,6 +59,12 @@
     <ClCompile Include="src\CameraApp.cpp">
       <Filter>Source Files\Apps</Filter>
     </ClCompile>
+    <ClCompile Include="src\Camera.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\CubeMapApp.cpp">
+      <Filter>Source Files\Apps</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Common\GameTimer.h">
@@ -79,13 +79,7 @@
     <ClInclude Include="src\Common\MathHelper.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="src\FirstApp.h">
-      <Filter>Header Files\Apps</Filter>
-    </ClInclude>
     <ClInclude Include="src\Common\D3DApp.h">
-      <Filter>Header Files\Apps</Filter>
-    </ClInclude>
-    <ClInclude Include="src\BoxApp.h">
       <Filter>Header Files\Apps</Filter>
     </ClInclude>
     <ClInclude Include="src\UploadBuffer.h">
@@ -107,6 +101,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\CameraApp.h">
+      <Filter>Header Files\Apps</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Camera.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\CubeMapApp.h">
       <Filter>Header Files\Apps</Filter>
     </ClInclude>
   </ItemGroup>
