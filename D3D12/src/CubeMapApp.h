@@ -26,6 +26,13 @@ struct RenderItem
 	int BaseVertexLocation = 0;
 };
 
+enum class RenderLayer : int
+{
+	Opaque = 0,
+	Count
+
+};
+
 class CubeMapApp : public D3DApp
 {
 public:
@@ -47,7 +54,6 @@ private:
 
 	void OnKeyboardInput(const GameTimer& gt);
 	void AnimateMaterials(const GameTimer& gt);
-	void UpdateCamera(const GameTimer& gt);
 	void UpdateObjectCBs(const GameTimer& gt);
 	void UpdateMaterialBuffer(const GameTimer& gt);
 	void UpdateMainPassCB(const GameTimer& gt);
@@ -57,6 +63,7 @@ private:
 	void BuildDescriptorHeaps();
 	void BuildShadersAndInputLayout();
 	void BuildShapeGeometry();
+	void BuildSkullGeometry();
 	void BuildPSOs();
 	void BuildFrameResources();
 	void BuildMaterials();
@@ -90,7 +97,8 @@ private:
 	// all of the render items
 	std::vector<std::unique_ptr<RenderItem>> allRItems;
 	// render items divided by PSO
-	std::vector<RenderItem*> opaqueRItems;
+	std::vector<RenderItem*> rItemLayer[(int)RenderLayer::Count];
+
 
 	PassConstants mainPassCB;
 

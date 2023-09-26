@@ -30,6 +30,7 @@ bool CubeMapApp::Initialize()
     BuildDescriptorHeaps();
     BuildShadersAndInputLayout();
     BuildShapeGeometry();
+    BuildSkullGeometry();
     BuildMaterials();
     BuildRenderItems();
     BuildFrameResources();
@@ -109,7 +110,7 @@ void CubeMapApp::Draw(const GameTimer& gt)
 
     pCommandList->SetGraphicsRootDescriptorTable(3, pSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 
-    DrawRenderItems(pCommandList.Get(), opaqueRItems);
+    DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Opaque]);
 
     pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
         CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT
@@ -271,38 +272,33 @@ void CubeMapApp::UpdateMainPassCB(const GameTimer& gt)
 
 void CubeMapApp::LoadTextures()
 {
-    auto bricksTex = std::make_unique<Texture>();
-    bricksTex->Name = "bricksTex";
-    bricksTex->Filename = L"Textures/bricks.dds";
-    ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(pDevice.Get(),
-        pCommandList.Get(), bricksTex->Filename.c_str(),
-        bricksTex->Resource, bricksTex->UploadHeap));
+    std::vector<std::string> texNames =
+    {
+        "bricksDiffuseMap",
+        "tileDiffuseMap",
+        "defaultDiffuseMap",
+        //"skyCubeMap"
+    };
 
-    auto stoneTex = std::make_unique<Texture>();
-    stoneTex->Name = "stoneTex";
-    stoneTex->Filename = L"Textures/stone.dds";
-    ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(pDevice.Get(),
-        pCommandList.Get(), stoneTex->Filename.c_str(),
-        stoneTex->Resource, stoneTex->UploadHeap));
+    std::vector<std::wstring> texFilenames =
+    {
+        L"Textures/bricks2.dds",
+        L"Textures/tile.dds",
+        L"Textures/white1x1.dds",
+        //L"Textures/grasscube1024.dds"
+    };
 
-    auto tileTex = std::make_unique<Texture>();
-    tileTex->Name = "tileTex";
-    tileTex->Filename = L"Textures/tile.dds";
-    ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(pDevice.Get(),
-        pCommandList.Get(), tileTex->Filename.c_str(),
-        tileTex->Resource, tileTex->UploadHeap));
+    for (int i = 0; i < (int)texNames.size(); ++i)
+    {
+        auto texMap = std::make_unique<Texture>();
+        texMap->Name = texNames[i];
+        texMap->Filename = texFilenames[i];
+        ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(pDevice.Get(),
+            pCommandList.Get(), texMap->Filename.c_str(),
+            texMap->Resource, texMap->UploadHeap));
 
-    auto crateTex = std::make_unique<Texture>();
-    crateTex->Name = "crateTex";
-    crateTex->Filename = L"Textures/WoodCrate01.dds";
-    ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(pDevice.Get(),
-        pCommandList.Get(), crateTex->Filename.c_str(),
-        crateTex->Resource, crateTex->UploadHeap));
-
-    textures[bricksTex->Name] = std::move(bricksTex);
-    textures[stoneTex->Name] = std::move(stoneTex);
-    textures[tileTex->Name] = std::move(tileTex);
-    textures[crateTex->Name] = std::move(crateTex);
+        textures[texMap->Name] = std::move(texMap);
+    }
 }
 
 void CubeMapApp::BuildRootSignature()
@@ -339,7 +335,7 @@ void CubeMapApp::BuildRootSignature()
 void CubeMapApp::BuildDescriptorHeaps()
 {
     D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc{};
-    srvHeapDesc.NumDescriptors = 4;
+    srvHeapDesc.NumDescriptors = 3;
     srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
     srvHeapDesc.NodeMask = 0;
@@ -347,11 +343,11 @@ void CubeMapApp::BuildDescriptorHeaps()
 
     CD3DX12_CPU_DESCRIPTOR_HANDLE descriptorH(pSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
-    auto bricksTex = textures["bricksTex"]->Resource;
-    auto stoneTex = textures["stoneTex"]->Resource;
-    auto tileTex = textures["tileTex"]->Resource;
-    auto crateTex = textures["crateTex"]->Resource;
-
+    auto bricksTex = textures["bricksDiffuseMap"]->Resource;
+    auto tileTex = textures["tileDiffuseMap"]->Resource;
+    auto whiteTex = textures["defaultDiffuseMap"]->Resource;
+    //auto skyTex = textures["skyCubeMap"]->Resource;
+    
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
     srvDesc.Format = bricksTex->GetDesc().Format;
@@ -364,13 +360,6 @@ void CubeMapApp::BuildDescriptorHeaps()
     // next
     descriptorH.Offset(1, cbvSrvDescriptorSize);
 
-    srvDesc.Format = stoneTex->GetDesc().Format;
-    srvDesc.Texture2D.MipLevels = stoneTex->GetDesc().MipLevels;
-    pDevice->CreateShaderResourceView(stoneTex.Get(), &srvDesc, descriptorH);
-
-    // next
-    descriptorH.Offset(1, cbvSrvDescriptorSize);
-
     srvDesc.Format = tileTex->GetDesc().Format;
     srvDesc.Texture2D.MipLevels = tileTex->GetDesc().MipLevels;
     pDevice->CreateShaderResourceView(tileTex.Get(), &srvDesc, descriptorH);
@@ -378,9 +367,16 @@ void CubeMapApp::BuildDescriptorHeaps()
     // next
     descriptorH.Offset(1, cbvSrvDescriptorSize);
 
-    srvDesc.Format = crateTex->GetDesc().Format;
+    srvDesc.Format = whiteTex->GetDesc().Format;
+    srvDesc.Texture2D.MipLevels = whiteTex->GetDesc().MipLevels;
+    pDevice->CreateShaderResourceView(whiteTex.Get(), &srvDesc, descriptorH);
+
+    // next
+    descriptorH.Offset(1, cbvSrvDescriptorSize);
+
+   /* srvDesc.Format = crateTex->GetDesc().Format;
     srvDesc.Texture2D.MipLevels = crateTex->GetDesc().MipLevels;
-    pDevice->CreateShaderResourceView(crateTex.Get(), &srvDesc, descriptorH);
+    pDevice->CreateShaderResourceView(crateTex.Get(), &srvDesc, descriptorH);*/
 }
 
 void CubeMapApp::BuildShadersAndInputLayout()
@@ -520,7 +516,99 @@ void CubeMapApp::BuildShapeGeometry()
     geometries[geo->Name] = std::move(geo);
 }
 
+void CubeMapApp::BuildSkullGeometry()
+{
+    using namespace DirectX;
+    std::ifstream fin("Models/skull.txt");
 
+    if (!fin)
+    {
+        MessageBox(0, L"Models/skull.txt not found.", 0, 0);
+        return;
+    }
+
+    UINT vcount = 0;
+    UINT tcount = 0;
+    std::string ignore;
+
+    fin >> ignore >> vcount;
+    fin >> ignore >> tcount;
+    fin >> ignore >> ignore >> ignore >> ignore;
+
+    XMFLOAT3 vMinf3(+MathHelper::Infinity, +MathHelper::Infinity, +MathHelper::Infinity);
+    XMFLOAT3 vMaxf3(-MathHelper::Infinity, -MathHelper::Infinity, -MathHelper::Infinity);
+
+    XMVECTOR vMin = XMLoadFloat3(&vMinf3);
+    XMVECTOR vMax = XMLoadFloat3(&vMaxf3);
+
+    std::vector<Vertex> vertices(vcount);
+    for (UINT i = 0; i < vcount; ++i)
+    {
+        fin >> vertices[i].Pos.x >> vertices[i].Pos.y >> vertices[i].Pos.z;
+        fin >> vertices[i].Normal.x >> vertices[i].Normal.y >> vertices[i].Normal.z;
+
+        vertices[i].TexC = { 0.0f, 0.0f };
+
+        XMVECTOR P = XMLoadFloat3(&vertices[i].Pos);
+
+        vMin = XMVectorMin(vMin, P);
+        vMax = XMVectorMax(vMax, P);
+    }
+
+    BoundingBox bounds;
+    XMStoreFloat3(&bounds.Center, 0.5f * (vMin + vMax));
+    XMStoreFloat3(&bounds.Extents, 0.5f * (vMax - vMin));
+
+    fin >> ignore;
+    fin >> ignore;
+    fin >> ignore;
+
+    std::vector<std::int32_t> indices(3 * tcount);
+    for (UINT i = 0; i < tcount; ++i)
+    {
+        fin >> indices[i * 3 + 0] >> indices[i * 3 + 1] >> indices[i * 3 + 2];
+    }
+
+    fin.close();
+
+    //
+    // Pack the indices of all the meshes into one index buffer.
+    //
+
+    const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
+
+    const UINT ibByteSize = (UINT)indices.size() * sizeof(std::int32_t);
+
+    auto geo = std::make_unique<MeshGeometry>();
+    geo->Name = "skullGeo";
+
+    ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->VertexBufferCPU));
+    CopyMemory(geo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
+
+    ThrowIfFailed(D3DCreateBlob(ibByteSize, &geo->IndexBufferCPU));
+    CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
+
+    geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(pDevice.Get(),
+        pCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
+
+    geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(pDevice.Get(),
+        pCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
+
+    geo->VertexByteStride = sizeof(Vertex);
+    geo->VertexBufferByteSize = vbByteSize;
+    geo->IndexFormat = DXGI_FORMAT_R32_UINT;
+    geo->IndexBufferByteSize = ibByteSize;
+
+    SubmeshGeometry submesh;
+    submesh.IndexCount = (UINT)indices.size();
+    submesh.StartIndexLocation = 0;
+    submesh.BaseVertexLocation = 0;
+    submesh.Bounds = bounds;
+
+    geo->DrawArgs["skull"] = submesh;
+
+    geometries[geo->Name] = std::move(geo);
+}
 
 void CubeMapApp::BuildPSOs()
 {
@@ -564,69 +652,110 @@ void CubeMapApp::BuildMaterials()
     bricks0->MatCBIndex = 0;
     bricks0->DiffuseSrvHeapIndex = 0;
     bricks0->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    bricks0->FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
-    bricks0->Roughness = 0.1f;
-
-    auto stone0 = std::make_unique<Material>();
-    stone0->Name = "stone0";
-    stone0->MatCBIndex = 1;
-    stone0->DiffuseSrvHeapIndex = 1;
-    stone0->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    stone0->FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05f);
-    stone0->Roughness = 0.3f;
+    bricks0->FresnelR0 = XMFLOAT3(0.1f, 0.1f, 0.1f);
+    bricks0->Roughness = 0.3f;
 
     auto tile0 = std::make_unique<Material>();
     tile0->Name = "tile0";
-    tile0->MatCBIndex = 2;
-    tile0->DiffuseSrvHeapIndex = 2;
-    tile0->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    tile0->FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
-    tile0->Roughness = 0.3f;
+    tile0->MatCBIndex = 1;
+    tile0->DiffuseSrvHeapIndex = 1;
+    tile0->DiffuseAlbedo = XMFLOAT4(0.9f, 0.9f, 0.9f, 1.0f);
+    tile0->FresnelR0 = XMFLOAT3(0.2f, 0.2f, 0.2f);
+    tile0->Roughness = 0.1f;
 
-    auto crate0 = std::make_unique<Material>();
-    crate0->Name = "crate0";
-    crate0->MatCBIndex = 3;
-    crate0->DiffuseSrvHeapIndex = 3;
-    crate0->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    crate0->FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05f);
-    crate0->Roughness = 0.2f;
+    auto mirror0 = std::make_unique<Material>();
+    mirror0->Name = "mirror0";
+    mirror0->MatCBIndex = 2;
+    mirror0->DiffuseSrvHeapIndex = 2;
+    mirror0->DiffuseAlbedo = XMFLOAT4(0.1f, 0.1f, 0.1f, 1.0f);
+    mirror0->FresnelR0 = XMFLOAT3(0.91f, 0.91f, 0.91f);
+    mirror0->Roughness = 0.1f;
+
+    auto skullMat = std::make_unique<Material>();
+    skullMat->Name = "skullMat";
+    skullMat->MatCBIndex = 3;
+    skullMat->DiffuseSrvHeapIndex = 2;
+    skullMat->DiffuseAlbedo = XMFLOAT4(0.8f, 0.8f, 0.8f, 1.0f);
+    skullMat->FresnelR0 = XMFLOAT3(0.2f, 0.2f, 0.2f);
+    skullMat->Roughness = 0.2f;
+
+   /* auto sky = std::make_unique<Material>();
+    sky->Name = "sky";
+    sky->MatCBIndex = 4;
+    sky->DiffuseSrvHeapIndex = 3;
+    sky->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    sky->FresnelR0 = XMFLOAT3(0.1f, 0.1f, 0.1f);
+    sky->Roughness = 1.0f;*/
 
     materials["bricks0"] = std::move(bricks0);
-    materials["stone0"] = std::move(stone0);
     materials["tile0"] = std::move(tile0);
-    materials["crate0"] = std::move(crate0);
+    materials["mirror0"] = std::move(mirror0);
+    materials["skullMat"] = std::move(skullMat);
+    //materials["sky"] = std::move(sky);
 }
 
 void CubeMapApp::BuildRenderItems()
 {
     using namespace DirectX;
 
+    /*auto skyRitem = std::make_unique<RenderItem>();
+    XMStoreFloat4x4(&skyRitem->World, XMMatrixScaling(5000.0f, 5000.0f, 5000.0f));
+    skyRitem->TexTransform = MathHelper::Identity4x4();
+    skyRitem->ObjCBIndex = 0;
+    skyRitem->Mat = materials["sky"].get();
+    skyRitem->Geo = geometries["shapeGeo"].get();
+    skyRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+    skyRitem->IndexCount = skyRitem->Geo->DrawArgs["sphere"].IndexCount;
+    skyRitem->StartIndexLocation = skyRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
+    skyRitem->BaseVertexLocation = skyRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
+
+    rItemLayer[(int)RenderLayer::Sky].push_back(skyRitem.get());
+    allRItems.push_back(std::move(skyRitem));*/
+
     auto boxRitem = std::make_unique<RenderItem>();
-    XMStoreFloat4x4(&boxRitem->World, XMMatrixScaling(2.0f, 2.0f, 2.0f) * XMMatrixTranslation(0.0f, 1.0f, 0.0f));
+    XMStoreFloat4x4(&boxRitem->World, XMMatrixScaling(2.0f, 1.0f, 2.0f) * XMMatrixTranslation(0.0f, 0.5f, 0.0f));
     XMStoreFloat4x4(&boxRitem->TexTransform, XMMatrixScaling(1.0f, 1.0f, 1.0f));
     boxRitem->ObjCBIndex = 0;
-    boxRitem->Mat = materials["crate0"].get();
+    boxRitem->Mat = materials["bricks0"].get();
     boxRitem->Geo = geometries["shapeGeo"].get();
     boxRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
     boxRitem->IndexCount = boxRitem->Geo->DrawArgs["box"].IndexCount;
     boxRitem->StartIndexLocation = boxRitem->Geo->DrawArgs["box"].StartIndexLocation;
     boxRitem->BaseVertexLocation = boxRitem->Geo->DrawArgs["box"].BaseVertexLocation;
+
+    rItemLayer[(int)RenderLayer::Opaque].push_back(boxRitem.get());
     allRItems.push_back(std::move(boxRitem));
+
+    auto skullRitem = std::make_unique<RenderItem>();
+    XMStoreFloat4x4(&skullRitem->World, XMMatrixScaling(0.4f, 0.4f, 0.4f) * XMMatrixTranslation(0.0f, 1.0f, 0.0f));
+    skullRitem->TexTransform = MathHelper::Identity4x4();
+    skullRitem->ObjCBIndex = 1;
+    skullRitem->Mat = materials["skullMat"].get();
+    skullRitem->Geo = geometries["skullGeo"].get();
+    skullRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+    skullRitem->IndexCount = skullRitem->Geo->DrawArgs["skull"].IndexCount;
+    skullRitem->StartIndexLocation = skullRitem->Geo->DrawArgs["skull"].StartIndexLocation;
+    skullRitem->BaseVertexLocation = skullRitem->Geo->DrawArgs["skull"].BaseVertexLocation;
+
+    rItemLayer[(int)RenderLayer::Opaque].push_back(skullRitem.get());
+    allRItems.push_back(std::move(skullRitem));
 
     auto gridRitem = std::make_unique<RenderItem>();
     gridRitem->World = MathHelper::Identity4x4();
     XMStoreFloat4x4(&gridRitem->TexTransform, XMMatrixScaling(8.0f, 8.0f, 1.0f));
-    gridRitem->ObjCBIndex = 1;
+    gridRitem->ObjCBIndex = 2;
     gridRitem->Mat = materials["tile0"].get();
     gridRitem->Geo = geometries["shapeGeo"].get();
     gridRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
     gridRitem->IndexCount = gridRitem->Geo->DrawArgs["grid"].IndexCount;
     gridRitem->StartIndexLocation = gridRitem->Geo->DrawArgs["grid"].StartIndexLocation;
     gridRitem->BaseVertexLocation = gridRitem->Geo->DrawArgs["grid"].BaseVertexLocation;
+
+    rItemLayer[(int)RenderLayer::Opaque].push_back(gridRitem.get());
     allRItems.push_back(std::move(gridRitem));
 
-    XMMATRIX brickTexTransform = XMMatrixScaling(1.0f, 1.0f, 1.0f);
-    UINT objCBIndex = 2;
+    XMMATRIX brickTexTransform = XMMatrixScaling(1.5f, 2.0f, 1.0f);
+    UINT objCBIndex = 3;
     for (int i = 0; i < 5; ++i)
     {
         auto leftCylRitem = std::make_unique<RenderItem>();
@@ -663,7 +792,7 @@ void CubeMapApp::BuildRenderItems()
         XMStoreFloat4x4(&leftSphereRitem->World, leftSphereWorld);
         leftSphereRitem->TexTransform = MathHelper::Identity4x4();
         leftSphereRitem->ObjCBIndex = objCBIndex++;
-        leftSphereRitem->Mat = materials["stone0"].get();
+        leftSphereRitem->Mat = materials["mirror0"].get();
         leftSphereRitem->Geo = geometries["shapeGeo"].get();
         leftSphereRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
         leftSphereRitem->IndexCount = leftSphereRitem->Geo->DrawArgs["sphere"].IndexCount;
@@ -673,22 +802,23 @@ void CubeMapApp::BuildRenderItems()
         XMStoreFloat4x4(&rightSphereRitem->World, rightSphereWorld);
         rightSphereRitem->TexTransform = MathHelper::Identity4x4();
         rightSphereRitem->ObjCBIndex = objCBIndex++;
-        rightSphereRitem->Mat = materials["stone0"].get();
+        rightSphereRitem->Mat = materials["mirror0"].get();
         rightSphereRitem->Geo = geometries["shapeGeo"].get();
         rightSphereRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
         rightSphereRitem->IndexCount = rightSphereRitem->Geo->DrawArgs["sphere"].IndexCount;
         rightSphereRitem->StartIndexLocation = rightSphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
         rightSphereRitem->BaseVertexLocation = rightSphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
 
+        rItemLayer[(int)RenderLayer::Opaque].push_back(leftCylRitem.get());
+        rItemLayer[(int)RenderLayer::Opaque].push_back(rightCylRitem.get());
+        rItemLayer[(int)RenderLayer::Opaque].push_back(leftSphereRitem.get());
+        rItemLayer[(int)RenderLayer::Opaque].push_back(rightSphereRitem.get());
+
         allRItems.push_back(std::move(leftCylRitem));
         allRItems.push_back(std::move(rightCylRitem));
         allRItems.push_back(std::move(leftSphereRitem));
         allRItems.push_back(std::move(rightSphereRitem));
     }
-
-    // All the render items are opaque.
-    for (auto& e : allRItems)
-        opaqueRItems.push_back(e.get());
 }
 
 void CubeMapApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& rItems)
