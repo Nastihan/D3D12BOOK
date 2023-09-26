@@ -115,6 +115,9 @@ void CubeMapApp::Draw(const GameTimer& gt)
 
     DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Opaque]);
 
+    pCommandList->SetPipelineState(PSOs["sky"].Get());
+    DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Sky]);
+
     pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
         CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT
     ));
@@ -380,6 +383,7 @@ void CubeMapApp::BuildDescriptorHeaps()
     // next
     descriptorH.Offset(1, cbvSrvDescriptorSize);
 
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
     srvDesc.Format = skyTex->GetDesc().Format;
     srvDesc.Texture2D.MipLevels = skyTex->GetDesc().MipLevels;
     pDevice->CreateShaderResourceView(skyTex.Get(), &srvDesc, descriptorH);

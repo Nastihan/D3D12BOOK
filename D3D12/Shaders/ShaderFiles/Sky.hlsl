@@ -93,6 +93,4 @@ Texture2D gDiffuseMap[3] : register(t1);
 float4 PS(VertexOut pin) : SV_Target
 {
     return cubeMap.Sample(gsamPointWrap, pin.PosL);
-    
-   
 }
