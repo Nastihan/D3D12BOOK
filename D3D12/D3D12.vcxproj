@@ -150,7 +150,7 @@
     <ClCompile Include="src\Common\DDSTextureLoader.cpp" />
     <ClCompile Include="src\Common\GameTimer.cpp" />
     <ClCompile Include="src\Common\MathHelper.cpp" />
-    <ClCompile Include="src\CubeMapApp.cpp" />
+    <ClCompile Include="src\DynamicCubeMapApp.cpp" />
     <ClCompile Include="src\FrameResource.cpp" />
     <ClCompile Include="src\WinMain.cpp" />
   </ItemGroup>
@@ -159,7 +159,7 @@
     <ClInclude Include="src\Camera.h" />
     <ClInclude Include="src\Common\GeometryGenerator.h" />
     <ClInclude Include="src\Common\Waves.h" />
-    <ClInclude Include="src\CubeMapApp.h" />
+    <ClInclude Include="src\DynamicCubeMapApp.h" />
     <ClInclude Include="src\FrameResource.h" />
     <ClInclude Include="src\Common\d3dx12.h" />
     <ClInclude Include="src\Common\D3DApp.h" />

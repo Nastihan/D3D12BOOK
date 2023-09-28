@@ -1,5 +1,5 @@
 #include <Windows.h>
-#include "CubeMapApp.h"
+#include "DynamicCubeMapApp.h"
 
 const int gNumFrameResources = 3;
 
@@ -11,7 +11,7 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
 	try
 	{
-		CubeMapApp app(hInstance);
+		DynamicCubeMapApp app(hInstance);
 		if (!app.Initialize())
 		{
 			return 0;
