@@ -23,6 +23,8 @@ bool DynamicCubeMapApp::Initialize()
 
     cam.SetPosition({ 0.0f, 2.0f, -5.0f });
 
+    cubeMap = std::make_unique<CubeMap>(pDevice.Get(), clientWidth, clientHeight, backBufferFormat, depthStencilFormat);
+
     cbvSrvDescriptorSize = pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
     LoadTextures();
@@ -89,6 +91,8 @@ void DynamicCubeMapApp::Draw(const GameTimer& gt)
         CurrentBackBuffer(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET
     ));
 
+
+
     pCommandList->ClearRenderTargetView(
         CurrentBackBufferView(), DirectX::Colors::MidnightBlue, 0, nullptr);
     pCommandList->ClearDepthStencilView(
@@ -133,6 +137,23 @@ void DynamicCubeMapApp::Draw(const GameTimer& gt)
     currFrameResource->fenceVal = ++currentFence;
 
     pCommandQueue->Signal(pFence.Get(), currentFence);
+}
+
+void DynamicCubeMapApp::CreateRtvAndDsvDescriptorHeaps()
+{
+    D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc{};
+    rtvHeapDesc.NumDescriptors = SwapChainBufferCount + 1;
+    rtvHeapDesc.NodeMask = 0;
+    rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+    rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+    ThrowIfFailed(pDevice->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&pRtvHeap)));
+
+    D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc{};
+    dsvHeapDesc.NumDescriptors = 1 + 1;
+    dsvHeapDesc.NodeMask = 0;
+    dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+    dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+    ThrowIfFailed(pDevice->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&pDsvHeap)));
 }
 
 void DynamicCubeMapApp::OnMouseDown(WPARAM btnState, int x, int y)
@@ -387,6 +408,13 @@ void DynamicCubeMapApp::BuildDescriptorHeaps()
     srvDesc.Format = skyTex->GetDesc().Format;
     srvDesc.Texture2D.MipLevels = skyTex->GetDesc().MipLevels;
     pDevice->CreateShaderResourceView(skyTex.Get(), &srvDesc, descriptorH);
+
+    CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(pRtvHeap->GetCPUDescriptorHandleForHeapStart());
+    rtvHandle.Offset(2, rtvDescriptorSize);
+    CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(pDsvHeap->GetCPUDescriptorHandleForHeapStart());
+    dsvHandle.Offset(1, dsvDescriptorSize);
+
+    cubeMap->BuildDescriptors(rtvHandle, dsvHandle);
 }
 
 void DynamicCubeMapApp::BuildShadersAndInputLayout()

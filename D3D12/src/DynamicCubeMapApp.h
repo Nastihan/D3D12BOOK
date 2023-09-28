@@ -3,6 +3,7 @@
 #include "UploadBuffer.h"
 #include "FrameResource.h"
 #include "Camera.h"
+#include "CubeMap.h"
 
 struct RenderItem
 {
@@ -49,6 +50,8 @@ private:
 	virtual void Update(const GameTimer& gt) override;
 	virtual void Draw(const GameTimer& gt) override;
 
+	virtual void CreateRtvAndDsvDescriptorHeaps() override;
+
 	virtual void OnMouseDown(WPARAM btnState, int x, int y)override;
 	virtual void OnMouseUp(WPARAM btnState, int x, int y)override;
 	virtual void OnMouseMove(WPARAM btnState, int x, int y)override;
@@ -74,6 +77,8 @@ private:
 		std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6>  GetStaticSamplers();
 private:
 	Camera cam;
+
+	std::unique_ptr<CubeMap> cubeMap;
 
 	std::vector<std::unique_ptr<FrameResource>> frameResources;
 	FrameResource* currFrameResource = nullptr;
