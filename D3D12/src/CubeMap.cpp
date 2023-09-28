@@ -12,20 +12,26 @@ void CubeMap::BuildResource()
 		rtvFormat, width, height, 1U, 0U, 1U, 0U,
 		D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET
 	);
+
+	float Color[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+	CD3DX12_CLEAR_VALUE clearValue(rtvFormat, Color);
+
 	ThrowIfFailed(device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-		D3D12_HEAP_FLAG_NONE, &rtvTexDesc, D3D12_RESOURCE_STATE_COMMON,
-		nullptr, IID_PPV_ARGS(&RT)
+		D3D12_HEAP_FLAG_NONE, &rtvTexDesc, D3D12_RESOURCE_STATE_RENDER_TARGET,
+		&clearValue, IID_PPV_ARGS(&RT)
 	));
 
+
+	
 	auto dsvTexDesc = CD3DX12_RESOURCE_DESC::Tex2D(
 		dsvFormat, width, height, 1U, 0U, 1U, 0U,
 		D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL
 	);
 	ThrowIfFailed(device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-		D3D12_HEAP_FLAG_NONE, &dsvTexDesc, D3D12_RESOURCE_STATE_COMMON,
-		nullptr, IID_PPV_ARGS(&DS)
+		D3D12_HEAP_FLAG_NONE, &dsvTexDesc, D3D12_RESOURCE_STATE_DEPTH_WRITE,
+		&CD3DX12_CLEAR_VALUE(dsvFormat, 1.0f, 0.0f), IID_PPV_ARGS(&DS)
 	));
 
 }

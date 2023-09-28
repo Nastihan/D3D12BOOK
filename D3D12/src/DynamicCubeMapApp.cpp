@@ -91,6 +91,11 @@ void DynamicCubeMapApp::Draw(const GameTimer& gt)
         CurrentBackBuffer(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET
     ));
 
+    pCommandList->ClearRenderTargetView(
+        cubeMap->Rtv(), DirectX::Colors::Black, 0, nullptr
+    );
+    pCommandList->ClearDepthStencilView(
+        cubeMap->Dsv(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
 
     pCommandList->ClearRenderTargetView(
@@ -98,8 +103,7 @@ void DynamicCubeMapApp::Draw(const GameTimer& gt)
     pCommandList->ClearDepthStencilView(
         DepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
-    pCommandList->OMSetRenderTargets(
-        1, &CurrentBackBufferView(), true, &DepthStencilView());
+    pCommandList->OMSetRenderTargets(1, &cubeMap->Rtv(), true, &cubeMap->Dsv());
 
     ID3D12DescriptorHeap* descHeaps[] = { pSrvDescriptorHeap.Get() };
     pCommandList->SetDescriptorHeaps(_countof(descHeaps), descHeaps);
@@ -116,6 +120,12 @@ void DynamicCubeMapApp::Draw(const GameTimer& gt)
 
     pCommandList->SetGraphicsRootDescriptorTable(4, CD3DX12_GPU_DESCRIPTOR_HANDLE(pSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart(),
         3, cbvSrvDescriptorSize));
+    DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Opaque]);
+
+
+
+    pCommandList->OMSetRenderTargets(
+        1, &CurrentBackBufferView(), true, &DepthStencilView());
 
     DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Opaque]);
 
