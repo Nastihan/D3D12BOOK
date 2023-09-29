@@ -102,6 +102,6 @@ protected:
 	D3D_DRIVER_TYPE d3dDriverType = D3D_DRIVER_TYPE_HARDWARE;
 	DXGI_FORMAT backBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 	DXGI_FORMAT depthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	int clientWidth = 1600;
-	int clientHeight = 900;
+	int clientWidth = 1366;
+	int clientHeight = 768;
 };
