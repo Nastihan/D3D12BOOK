@@ -99,13 +99,12 @@ private:
 
 	std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout;
 
-	//Microsoft::WRL::ComPtr<ID3D12PipelineState> opaquePSO = nullptr;
-
 	// all of the render items
 	std::vector<std::unique_ptr<RenderItem>> allRItems;
 	// render items divided by PSO
 	std::vector<RenderItem*> rItemLayer[(int)RenderLayer::Count];
 
+	RenderItem* skullRItem = nullptr;
 
 	PassConstants mainPassCB;
 

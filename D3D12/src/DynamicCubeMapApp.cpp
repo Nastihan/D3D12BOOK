@@ -61,6 +61,7 @@ void DynamicCubeMapApp::Update(const GameTimer& gt)
 {
     OnKeyboardInput(gt);
 
+    
     currFrameResourceIndex = (currFrameResourceIndex + 1) % gNumFrameResources;
     currFrameResource = frameResources[currFrameResourceIndex].get();
 
@@ -224,6 +225,18 @@ void DynamicCubeMapApp::OnKeyboardInput(const GameTimer& gt)
 
 void DynamicCubeMapApp::AnimateMaterials(const GameTimer& gt)
 {
+    // animate the skull
+    
+    using namespace DirectX;
+    XMMATRIX world(
+        XMMatrixScaling(0.2f, 0.2f, 0.2f) * 
+        XMMatrixRotationY(gt.TotalTime()) * 
+        XMMatrixTranslation(0, 2.5f, -2.5) * 
+        XMMatrixRotationY(0.3f * gt.TotalTime()) 
+        );
+    
+    XMStoreFloat4x4(&skullRItem->World, world);
+    skullRItem->NumFramesDirty = gNumFrameResources;
 }
 
 void DynamicCubeMapApp::UpdateObjectCBs(const GameTimer& gf)
@@ -733,31 +746,31 @@ void DynamicCubeMapApp::BuildMaterials()
     mirror0->Name = "mirror0";
     mirror0->MatCBIndex = 2;
     mirror0->DiffuseSrvHeapIndex = 2;
-    mirror0->DiffuseAlbedo = XMFLOAT4(0.1f, 0.1f, 0.1f, 1.0f);
-    mirror0->FresnelR0 = XMFLOAT3(0.91f, 0.91f, 0.91f);
+    mirror0->DiffuseAlbedo = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    mirror0->FresnelR0 = XMFLOAT3(0.98f, 0.97f, 0.95f);
     mirror0->Roughness = 0.1f;
-
-    auto skullMat = std::make_unique<Material>();
-    skullMat->Name = "skullMat";
-    skullMat->MatCBIndex = 3;
-    skullMat->DiffuseSrvHeapIndex = 2;
-    skullMat->DiffuseAlbedo = XMFLOAT4(0.8f, 0.8f, 0.8f, 1.0f);
-    skullMat->FresnelR0 = XMFLOAT3(0.2f, 0.2f, 0.2f);
-    skullMat->Roughness = 0.2f;
 
     auto sky = std::make_unique<Material>();
     sky->Name = "sky";
-    sky->MatCBIndex = 4;
+    sky->MatCBIndex = 3;
     sky->DiffuseSrvHeapIndex = 3;
     sky->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
     sky->FresnelR0 = XMFLOAT3(0.1f, 0.1f, 0.1f);
     sky->Roughness = 1.0f;
 
+    auto skullMat = std::make_unique<Material>();
+    skullMat->Name = "skullMat";
+    skullMat->MatCBIndex = 4;
+    skullMat->DiffuseSrvHeapIndex = 2;
+    skullMat->DiffuseAlbedo = XMFLOAT4(0.8f, 0.8f, 0.8f, 1.0f);
+    skullMat->FresnelR0 = XMFLOAT3(0.2f, 0.2f, 0.2f);
+    skullMat->Roughness = 0.2f;
+
     materials["bricks0"] = std::move(bricks0);
     materials["tile0"] = std::move(tile0);
     materials["mirror0"] = std::move(mirror0);
-    materials["skullMat"] = std::move(skullMat);
     materials["sky"] = std::move(sky);
+    materials["skullMat"] = std::move(skullMat);
 }
 
 void DynamicCubeMapApp::BuildRenderItems()
@@ -778,10 +791,26 @@ void DynamicCubeMapApp::BuildRenderItems()
     rItemLayer[(int)RenderLayer::Sky].push_back(skyRitem.get());
     allRItems.push_back(std::move(skyRitem));
 
+    auto skullRitem = std::make_unique<RenderItem>();
+    skullRitem->World = MathHelper::Identity4x4();
+    skullRitem->TexTransform = MathHelper::Identity4x4();
+    skullRitem->ObjCBIndex = 1;
+    skullRitem->Mat = materials["skullMat"].get();
+    skullRitem->Geo = geometries["skullGeo"].get();
+    skullRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+    skullRitem->IndexCount = skullRitem->Geo->DrawArgs["skull"].IndexCount;
+    skullRitem->StartIndexLocation = skullRitem->Geo->DrawArgs["skull"].StartIndexLocation;
+    skullRitem->BaseVertexLocation = skullRitem->Geo->DrawArgs["skull"].BaseVertexLocation;
+
+    skullRItem = skullRitem.get();
+
+    rItemLayer[(int)RenderLayer::Opaque].push_back(skullRitem.get());
+    allRItems.push_back(std::move(skullRitem));
+
     auto boxRitem = std::make_unique<RenderItem>();
     XMStoreFloat4x4(&boxRitem->World, XMMatrixScaling(2.0f, 1.0f, 2.0f) * XMMatrixTranslation(0.0f, 0.5f, 0.0f));
     XMStoreFloat4x4(&boxRitem->TexTransform, XMMatrixScaling(1.0f, 1.0f, 1.0f));
-    boxRitem->ObjCBIndex = 1;
+    boxRitem->ObjCBIndex = 2;
     boxRitem->Mat = materials["bricks0"].get();
     boxRitem->Geo = geometries["shapeGeo"].get();
     boxRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -792,24 +821,24 @@ void DynamicCubeMapApp::BuildRenderItems()
     rItemLayer[(int)RenderLayer::Opaque].push_back(boxRitem.get());
     allRItems.push_back(std::move(boxRitem));
 
-    auto skullRitem = std::make_unique<RenderItem>();
-    XMStoreFloat4x4(&skullRitem->World, XMMatrixScaling(0.4f, 0.4f, 0.4f) * XMMatrixTranslation(0.0f, 1.0f, 0.0f));
-    skullRitem->TexTransform = MathHelper::Identity4x4();
-    skullRitem->ObjCBIndex = 2;
-    skullRitem->Mat = materials["skullMat"].get();
-    skullRitem->Geo = geometries["skullGeo"].get();
-    skullRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-    skullRitem->IndexCount = skullRitem->Geo->DrawArgs["skull"].IndexCount;
-    skullRitem->StartIndexLocation = skullRitem->Geo->DrawArgs["skull"].StartIndexLocation;
-    skullRitem->BaseVertexLocation = skullRitem->Geo->DrawArgs["skull"].BaseVertexLocation;
+    auto globeRitem = std::make_unique<RenderItem>();
+    XMStoreFloat4x4(&globeRitem->World, XMMatrixScaling(2.0f, 2.0f, 2.0f) * XMMatrixTranslation(0.0f, 2.0f, 0.0f));
+    XMStoreFloat4x4(&globeRitem->TexTransform, XMMatrixScaling(1.0f, 1.0f, 1.0f));
+    globeRitem->ObjCBIndex = 3;
+    globeRitem->Mat = materials["mirror0"].get();
+    globeRitem->Geo = geometries["shapeGeo"].get();
+    globeRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+    globeRitem->IndexCount = globeRitem->Geo->DrawArgs["sphere"].IndexCount;
+    globeRitem->StartIndexLocation = globeRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
+    globeRitem->BaseVertexLocation = globeRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
 
-    rItemLayer[(int)RenderLayer::Opaque].push_back(skullRitem.get());
-    allRItems.push_back(std::move(skullRitem));
+    rItemLayer[(int)RenderLayer::Opaque].push_back(globeRitem.get());
+    allRItems.push_back(std::move(globeRitem));
 
     auto gridRitem = std::make_unique<RenderItem>();
     gridRitem->World = MathHelper::Identity4x4();
     XMStoreFloat4x4(&gridRitem->TexTransform, XMMatrixScaling(8.0f, 8.0f, 1.0f));
-    gridRitem->ObjCBIndex = 3;
+    gridRitem->ObjCBIndex = 4;
     gridRitem->Mat = materials["tile0"].get();
     gridRitem->Geo = geometries["shapeGeo"].get();
     gridRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -821,7 +850,7 @@ void DynamicCubeMapApp::BuildRenderItems()
     allRItems.push_back(std::move(gridRitem));
 
     XMMATRIX brickTexTransform = XMMatrixScaling(1.5f, 2.0f, 1.0f);
-    UINT objCBIndex = 4;
+    UINT objCBIndex = 5;
     for (int i = 0; i < 5; ++i)
     {
         auto leftCylRitem = std::make_unique<RenderItem>();
@@ -874,7 +903,7 @@ void DynamicCubeMapApp::BuildRenderItems()
         rightSphereRitem->IndexCount = rightSphereRitem->Geo->DrawArgs["sphere"].IndexCount;
         rightSphereRitem->StartIndexLocation = rightSphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
         rightSphereRitem->BaseVertexLocation = rightSphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
-
+         
         rItemLayer[(int)RenderLayer::Opaque].push_back(leftCylRitem.get());
         rItemLayer[(int)RenderLayer::Opaque].push_back(rightCylRitem.get());
         rItemLayer[(int)RenderLayer::Opaque].push_back(leftSphereRitem.get());
