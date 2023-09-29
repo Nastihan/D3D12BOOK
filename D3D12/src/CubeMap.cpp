@@ -9,7 +9,7 @@ CubeMap::CubeMap(ID3D12Device* device, UINT width, UINT height, DXGI_FORMAT rtvF
 void CubeMap::BuildResource()
 {
 	auto rtvTexDesc = CD3DX12_RESOURCE_DESC::Tex2D(
-		rtvFormat, width, height, 1U, 0U, 1U, 0U,
+		rtvFormat, width, height, 6U, 0U, 1U, 0U,
 		D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET
 	);
 
@@ -21,8 +21,6 @@ void CubeMap::BuildResource()
 		D3D12_HEAP_FLAG_NONE, &rtvTexDesc, D3D12_RESOURCE_STATE_RENDER_TARGET,
 		&clearValue, IID_PPV_ARGS(&RT)
 	));
-
-
 	
 	auto dsvTexDesc = CD3DX12_RESOURCE_DESC::Tex2D(
 		dsvFormat, width, height, 1U, 0U, 1U, 0U,
@@ -31,14 +29,18 @@ void CubeMap::BuildResource()
 	ThrowIfFailed(device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		D3D12_HEAP_FLAG_NONE, &dsvTexDesc, D3D12_RESOURCE_STATE_DEPTH_WRITE,
-		&CD3DX12_CLEAR_VALUE(dsvFormat, 1.0f, 0.0f), IID_PPV_ARGS(&DS)
+		&CD3DX12_CLEAR_VALUE(dsvFormat, 1.0f, 0), IID_PPV_ARGS(&DS)
 	));
 
 }
 
-void CubeMap::BuildDescriptors(D3D12_CPU_DESCRIPTOR_HANDLE cpuRtv, D3D12_CPU_DESCRIPTOR_HANDLE cpuDsv)
+void CubeMap::BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE cpuRtv, CD3DX12_CPU_DESCRIPTOR_HANDLE cpuDsv)
 {
-	this->cpuRtv = cpuRtv;
+	for (size_t i = 0; i < 6; i++)
+	{
+		CD3DX12_CPU_DESCRIPTOR_HANDLE handle(cpuRtv, i, device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
+		this->cpuRtvs[i] = handle;
+	}
 	this->cpuDsv = cpuDsv;
 
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc;
@@ -48,12 +50,15 @@ void CubeMap::BuildDescriptors(D3D12_CPU_DESCRIPTOR_HANDLE cpuRtv, D3D12_CPU_DES
 	dsvDesc.Texture2D.MipSlice = 0;
 	device->CreateDepthStencilView(DS.Get(), &dsvDesc, cpuDsv);
 
-	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
-	rtvDesc.Format = rtvFormat;
-	rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-	rtvDesc.Texture2DArray.MipSlice = 0;
-	rtvDesc.Texture2DArray.PlaneSlice = 0;
-	rtvDesc.Texture2DArray.FirstArraySlice = 0;
-	rtvDesc.Texture2DArray.ArraySize = 1;
-	device->CreateRenderTargetView(RT.Get(), &rtvDesc, cpuRtv);
+	for (size_t i =0; i < 6; i++)
+	{
+		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
+		rtvDesc.Format = rtvFormat;
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+		rtvDesc.Texture2DArray.MipSlice = 0;
+		rtvDesc.Texture2DArray.PlaneSlice = 0;
+		rtvDesc.Texture2DArray.FirstArraySlice = (int)i;
+		rtvDesc.Texture2DArray.ArraySize = 1;
+		device->CreateRenderTargetView(RT.Get(), &rtvDesc, cpuRtvs[i]);
+	}
 }

@@ -49,6 +49,7 @@ private:
 	virtual void OnResize() override;
 	virtual void Update(const GameTimer& gt) override;
 	virtual void Draw(const GameTimer& gt) override;
+	void DrawToCubeMap();
 
 	virtual void CreateRtvAndDsvDescriptorHeaps() override;
 
