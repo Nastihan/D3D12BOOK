@@ -22,6 +22,7 @@ bool DynamicCubeMapApp::Initialize()
     ThrowIfFailed(pCommandList->Reset(pCmdListAlloc.Get(), nullptr));
 
     cam.SetPosition({ 0.0f, 2.0f, -5.0f });
+    //cam.LookAt(DirectX::XMFLOAT3{ 0.0f, 2.0f, -10.0f }, { 0.0f, 0.0f, 10.0f }, { 0.0f, 1.0f, 0.0f });
     BuildCubeMapCameras(0.0f, 2.0f, 0.0f);
   
     cubeMap = std::make_unique<CubeMap>(pDevice.Get(), clientWidth, clientHeight, backBufferFormat, depthStencilFormat);
@@ -56,10 +57,7 @@ void DynamicCubeMapApp::OnResize()
 
 
     cam.SetLens(45.0f, GetAR(), 0.5f, 400.0f);
-    for (int i = 0; i < 6; i++)
-    {
-        cubeMapCameras[i].SetLens(45.0f, GetAR(), 0.5f, 1000.0f);
-    }
+    
 }
 
 void DynamicCubeMapApp::Update(const GameTimer& gt)
@@ -99,9 +97,6 @@ void DynamicCubeMapApp::Draw(const GameTimer& gt)
 
     pCommandList->SetGraphicsRootSignature(pRootSignature.Get());
 
-    auto passCB = currFrameResource->PassCB->Resource();
-    pCommandList->SetGraphicsRootConstantBufferView(1, passCB->GetGPUVirtualAddress());
-
     auto matBuffer = currFrameResource->MaterialBuffer->Resource();
     pCommandList->SetGraphicsRootShaderResourceView(2, matBuffer->GetGPUVirtualAddress());
 
@@ -123,6 +118,10 @@ void DynamicCubeMapApp::Draw(const GameTimer& gt)
 
     pCommandList->OMSetRenderTargets(
         1, &CurrentBackBufferView(), true, &DepthStencilView());
+
+    auto passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
+    auto passCB = currFrameResource->PassCB->Resource();
+    pCommandList->SetGraphicsRootConstantBufferView(1, passCB->GetGPUVirtualAddress());
 
     DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Opaque]);
 
@@ -148,7 +147,7 @@ void DynamicCubeMapApp::Draw(const GameTimer& gt)
 
 void DynamicCubeMapApp::DrawToCubeMap()
 {
-    
+    auto passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
     for (size_t i = 0; i < 6; i++)
     {
         pCommandList->ClearRenderTargetView(
@@ -156,8 +155,12 @@ void DynamicCubeMapApp::DrawToCubeMap()
         );
         pCommandList->ClearDepthStencilView(
             cubeMap->Dsv(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
-
         pCommandList->OMSetRenderTargets(1, &cubeMap->Rtv(i), true, &cubeMap->Dsv());
+
+        auto passCB = currFrameResource->PassCB->Resource();
+        auto cbAddress = passCB->GetGPUVirtualAddress() + ((i + 1) * passCBByteSize);
+        pCommandList->SetGraphicsRootConstantBufferView(1, cbAddress);
+
         DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Opaque]);
     }
   
@@ -366,7 +369,7 @@ void DynamicCubeMapApp::UpdateCubeMapPassCB(const GameTimer& gt)
         cubeMapPassCBs[i].Lights[2].Strength = { 0.15f, 0.15f, 0.15f };
 
         auto currPassCB = currFrameResource->PassCB.get();
-        currPassCB->CopyData(i + 1, mainPassCB);
+        currPassCB->CopyData(i + 1, cubeMapPassCBs[i]);
     }
 }
 
@@ -875,13 +878,13 @@ void DynamicCubeMapApp::BuildRenderItems()
     globeRitem->StartIndexLocation = globeRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
     globeRitem->BaseVertexLocation = globeRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
 
-    rItemLayer[(int)RenderLayer::Opaque].push_back(globeRitem.get());
-    allRItems.push_back(std::move(globeRitem));
+    //rItemLayer[(int)RenderLayer::Opaque].push_back(globeRitem.get());
+    //allRItems.push_back(std::move(globeRitem));
 
     auto gridRitem = std::make_unique<RenderItem>();
     gridRitem->World = MathHelper::Identity4x4();
     XMStoreFloat4x4(&gridRitem->TexTransform, XMMatrixScaling(8.0f, 8.0f, 1.0f));
-    gridRitem->ObjCBIndex = 4;
+    gridRitem->ObjCBIndex = 3;
     gridRitem->Mat = materials["tile0"].get();
     gridRitem->Geo = geometries["shapeGeo"].get();
     gridRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -893,8 +896,8 @@ void DynamicCubeMapApp::BuildRenderItems()
     allRItems.push_back(std::move(gridRitem));
 
     XMMATRIX brickTexTransform = XMMatrixScaling(1.5f, 2.0f, 1.0f);
-    UINT objCBIndex = 5;
-    for (int i = 0; i < 5; ++i)
+    UINT objCBIndex = 4;
+    for (int i = 0; i < 4; ++i)
     {
         auto leftCylRitem = std::make_unique<RenderItem>();
         auto rightCylRitem = std::make_unique<RenderItem>();
@@ -985,28 +988,29 @@ void DynamicCubeMapApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, cons
 
 void DynamicCubeMapApp::BuildCubeMapCameras(float x, float y, float z)
 {
-
+    using namespace DirectX;
     DirectX::XMFLOAT3 targets[6]
     {
-        {x + 0.0f,y + 0.0f,z + 1.0f},
-        {x + 1.0f,y + 0.0f,z + 0.0f},
-        {x + 0.0f,y + 0.0f,z + -1.0f},
-        {x + -1.0f,y + 0.0f,z + 0.0f},
-        {x + 0.0f,y + 1.0f,z + 0.0f},
-        {x + 0.0f,y + -1.0f,z + 0.0f}
+        XMFLOAT3(x + 1.0f, y, z), // +X
+        XMFLOAT3(x - 1.0f, y, z), // -X
+        XMFLOAT3(x, y + 1.0f, z), // +Y
+        XMFLOAT3(x, y - 1.0f, z), // -Y
+        XMFLOAT3(x, y, z + 1.0f), // +Z
+        XMFLOAT3(x, y, z - 1.0f)  // -Z
     };
     DirectX::XMFLOAT3 ups[6]
     {
-        {0.0f, 1.0f, 0.0f},
-        {0.0f, 1.0f, 0.0f},
-        {0.0f, 1.0f, 0.0f},
-        {0.0f, 1.0f, 0.0f},
-        {0.0f, 0.0f, 1.0f},
-        {0.0f, 0.0f, -1.0f}
+        XMFLOAT3(0.0f, 1.0f, 0.0f),  // +X
+        XMFLOAT3(0.0f, 1.0f, 0.0f),  // -X
+        XMFLOAT3(0.0f, 0.0f, -1.0f), // +Y
+        XMFLOAT3(0.0f, 0.0f, +1.0f), // -Y
+        XMFLOAT3(0.0f, 1.0f, 0.0f),	 // +Z
+        XMFLOAT3(0.0f, 1.0f, 0.0f)	 // -Z
     };
     for (size_t i = 0; i < 6; i++)
     {
-        cubeMapCameras[i].LookAt({ 0.0f, 0.0f, 0.0f }, targets[i], ups[i]);
+        cubeMapCameras[i].LookAt({ x, y, z }, targets[i], ups[i]);
+        cubeMapCameras[i].SetLens(0.5f * DirectX::XM_PI, 1.0f, 0.1f, 1000.0f);
         cubeMapCameras[i].UpdateViewMatrix();
     }
 
