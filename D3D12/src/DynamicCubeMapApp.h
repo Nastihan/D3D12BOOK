@@ -62,6 +62,7 @@ private:
 	void UpdateObjectCBs(const GameTimer& gt);
 	void UpdateMaterialBuffer(const GameTimer& gt);
 	void UpdateMainPassCB(const GameTimer& gt);
+	void UpdateCubeMapPassCB(const GameTimer& gt);
 
 	void LoadTextures();
 	void BuildRootSignature();
@@ -73,11 +74,14 @@ private:
 	void BuildFrameResources();
 	void BuildMaterials();
 	void BuildRenderItems();
-	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& rItems); \
+	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& rItems); 
 
-		std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6>  GetStaticSamplers();
+	void BuildCubeMapCameras(float x, float y, float z);
+
+	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6>  GetStaticSamplers();
 private:
 	Camera cam;
+	Camera cubeMapCameras[6];
 
 	std::unique_ptr<CubeMap> cubeMap;
 
@@ -107,6 +111,8 @@ private:
 	RenderItem* skullRItem = nullptr;
 
 	PassConstants mainPassCB;
+
+	PassConstants cubeMapPassCBs[6];
 
 	DirectX::XMFLOAT3 eyePos = { 0.0f, 0.0f, 0.0f };
 	DirectX::XMFLOAT4X4 view = MathHelper::Identity4x4();

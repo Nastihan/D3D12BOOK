@@ -22,7 +22,8 @@ bool DynamicCubeMapApp::Initialize()
     ThrowIfFailed(pCommandList->Reset(pCmdListAlloc.Get(), nullptr));
 
     cam.SetPosition({ 0.0f, 2.0f, -5.0f });
-
+    BuildCubeMapCameras(0.0f, 2.0f, 0.0f);
+  
     cubeMap = std::make_unique<CubeMap>(pDevice.Get(), clientWidth, clientHeight, backBufferFormat, depthStencilFormat);
 
     cbvSrvDescriptorSize = pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
@@ -55,6 +56,10 @@ void DynamicCubeMapApp::OnResize()
 
 
     cam.SetLens(45.0f, GetAR(), 0.5f, 400.0f);
+    for (int i = 0; i < 6; i++)
+    {
+        cubeMapCameras[i].SetLens(45.0f, GetAR(), 0.5f, 1000.0f);
+    }
 }
 
 void DynamicCubeMapApp::Update(const GameTimer& gt)
@@ -77,6 +82,7 @@ void DynamicCubeMapApp::Update(const GameTimer& gt)
     UpdateObjectCBs(gt);
     UpdateMaterialBuffer(gt);
     UpdateMainPassCB(gt);
+    UpdateCubeMapPassCB(gt);
 }
 
 void DynamicCubeMapApp::Draw(const GameTimer& gt)
@@ -226,7 +232,6 @@ void DynamicCubeMapApp::OnKeyboardInput(const GameTimer& gt)
 void DynamicCubeMapApp::AnimateMaterials(const GameTimer& gt)
 {
     // animate the skull
-    
     using namespace DirectX;
     XMMATRIX world(
         XMMatrixScaling(0.2f, 0.2f, 0.2f) * 
@@ -325,6 +330,44 @@ void DynamicCubeMapApp::UpdateMainPassCB(const GameTimer& gt)
 
     auto currPassCB = currFrameResource->PassCB.get();
     currPassCB->CopyData(0, mainPassCB);
+}
+
+void DynamicCubeMapApp::UpdateCubeMapPassCB(const GameTimer& gt)
+{
+    for (int i = 0; i < 6; i++)
+    {
+        DirectX::XMMATRIX view = cubeMapCameras[i].GetView();
+        DirectX::XMMATRIX proj = cubeMapCameras[i].GetProj();
+
+        DirectX::XMMATRIX viewProj = XMMatrixMultiply(view, proj);
+        DirectX::XMMATRIX invView = XMMatrixInverse(&XMMatrixDeterminant(view), view);
+        DirectX::XMMATRIX invProj = XMMatrixInverse(&XMMatrixDeterminant(proj), proj);
+        DirectX::XMMATRIX invViewProj = XMMatrixInverse(&XMMatrixDeterminant(viewProj), viewProj);
+
+        DirectX::XMStoreFloat4x4(&cubeMapPassCBs[i].View, XMMatrixTranspose(view));
+        DirectX::XMStoreFloat4x4(&cubeMapPassCBs[i].InvView, XMMatrixTranspose(invView));
+        DirectX::XMStoreFloat4x4(&cubeMapPassCBs[i].Proj, XMMatrixTranspose(proj));
+        DirectX::XMStoreFloat4x4(&cubeMapPassCBs[i].InvProj, XMMatrixTranspose(invProj));
+        DirectX::XMStoreFloat4x4(&cubeMapPassCBs[i].ViewProj, XMMatrixTranspose(viewProj));
+        DirectX::XMStoreFloat4x4(&cubeMapPassCBs[i].InvViewProj, XMMatrixTranspose(invViewProj));
+        cubeMapPassCBs[i].EyePosW = cubeMapCameras[i].GetPosition3f();
+        cubeMapPassCBs[i].RenderTargetSize = DirectX::XMFLOAT2((float)clientWidth, (float)clientHeight);
+        cubeMapPassCBs[i].InvRenderTargetSize = DirectX::XMFLOAT2(1.0f / clientWidth, 1.0f / clientHeight);
+        cubeMapPassCBs[i].NearZ = 1.0f;
+        cubeMapPassCBs[i].FarZ = 1000.0f;
+        cubeMapPassCBs[i].TotalTime = gt.TotalTime();
+        cubeMapPassCBs[i].DeltaTime = gt.DeltaTime();
+        cubeMapPassCBs[i].AmbientLight = { 0.05f, 0.05f, 0.10f, 1.0f };
+        cubeMapPassCBs[i].Lights[0].Direction = { 0.57735f, -0.57735f, 0.57735f };
+        cubeMapPassCBs[i].Lights[0].Strength = { 0.6f, 0.6f, 0.6f };
+        cubeMapPassCBs[i].Lights[1].Direction = { -0.57735f, -0.57735f, 0.57735f };
+        cubeMapPassCBs[i].Lights[1].Strength = { 0.3f, 0.3f, 0.3f };
+        cubeMapPassCBs[i].Lights[2].Direction = { 0.0f, -0.707f, -0.707f };
+        cubeMapPassCBs[i].Lights[2].Strength = { 0.15f, 0.15f, 0.15f };
+
+        auto currPassCB = currFrameResource->PassCB.get();
+        currPassCB->CopyData(i + 1, mainPassCB);
+    }
 }
 
 void DynamicCubeMapApp::LoadTextures()
@@ -719,7 +762,7 @@ void DynamicCubeMapApp::BuildFrameResources()
 {
     for (int i = 0; i < gNumFrameResources; ++i)
     {
-        frameResources.push_back(std::make_unique<FrameResource>(pDevice.Get(), 1, (UINT)allRItems.size(), (UINT)materials.size()));
+        frameResources.push_back(std::make_unique<FrameResource>(pDevice.Get(), 7, (UINT)allRItems.size(), (UINT)materials.size()));
     }
 }
 
@@ -938,6 +981,35 @@ void DynamicCubeMapApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, cons
 
         cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
     }
+}
+
+void DynamicCubeMapApp::BuildCubeMapCameras(float x, float y, float z)
+{
+
+    DirectX::XMFLOAT3 targets[6]
+    {
+        {x + 0.0f,y + 0.0f,z + 1.0f},
+        {x + 1.0f,y + 0.0f,z + 0.0f},
+        {x + 0.0f,y + 0.0f,z + -1.0f},
+        {x + -1.0f,y + 0.0f,z + 0.0f},
+        {x + 0.0f,y + 1.0f,z + 0.0f},
+        {x + 0.0f,y + -1.0f,z + 0.0f}
+    };
+    DirectX::XMFLOAT3 ups[6]
+    {
+        {0.0f, 1.0f, 0.0f},
+        {0.0f, 1.0f, 0.0f},
+        {0.0f, 1.0f, 0.0f},
+        {0.0f, 1.0f, 0.0f},
+        {0.0f, 0.0f, 1.0f},
+        {0.0f, 0.0f, -1.0f}
+    };
+    for (size_t i = 0; i < 6; i++)
+    {
+        cubeMapCameras[i].LookAt({ 0.0f, 0.0f, 0.0f }, targets[i], ups[i]);
+        cubeMapCameras[i].UpdateViewMatrix();
+    }
+
 }
 
 std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> DynamicCubeMapApp::GetStaticSamplers()
