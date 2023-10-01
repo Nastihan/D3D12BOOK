@@ -63,7 +63,7 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\DynamicCubeMapApp.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Apps</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -94,19 +94,19 @@
     <ClInclude Include="src\FrameResource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\BlurFilter.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\Camera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\CubeMap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\DynamicCubeMapApp.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\UploadBuffer.h">
+      <Filter>Header Files\Bindable</Filter>
+    </ClInclude>
+    <ClInclude Include="src\DynamicCubeMapApp.h">
+      <Filter>Header Files\Apps</Filter>
+    </ClInclude>
+    <ClInclude Include="src\BlurFilter.h">
       <Filter>Header Files\Bindable</Filter>
     </ClInclude>
   </ItemGroup>

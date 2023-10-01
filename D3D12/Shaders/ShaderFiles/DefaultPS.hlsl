@@ -42,10 +42,9 @@ float4 main(VertexOut pin) : SV_Target
     float4 litColor = ambient + directLight;
     
     float3 r = reflect(-toEyeW, pin.NormalW);
-    float4 rColor = cubeMap.Sample(gsamAnisotropicWrap, r);
+    float4 reflectionColor = cubeMap.Sample(gsamLinearWrap, r);
     float3 fresnelFactor = SchlickFresnel(fresnelR0, pin.NormalW, r);
-    rColor = rColor * shininess;
-    litColor.rgb += shininess * fresnelFactor * rColor.rgb;
+    litColor.rgb += shininess * fresnelFactor * reflectionColor.rgb;
 
     // Common convention to take alpha from diffuse albedo.
     litColor.a = diffuseAlbedo.a;

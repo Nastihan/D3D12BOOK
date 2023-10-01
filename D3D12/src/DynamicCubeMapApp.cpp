@@ -130,7 +130,6 @@ void DynamicCubeMapApp::Draw(const GameTimer& gt)
 
     pCommandList->SetGraphicsRootDescriptorTable(4, CD3DX12_GPU_DESCRIPTOR_HANDLE(pSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart(),
         3, cbvSrvDescriptorSize));
-   // pCommandList->SetPipelineState(PSOs["opaque"].Get());
     DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Opaque]);
 
     pCommandList->SetPipelineState(PSOs["sky"].Get());
