@@ -9,7 +9,7 @@ CubeMap::CubeMap(ID3D12Device* device, UINT width, UINT height, DXGI_FORMAT rtvF
 void CubeMap::BuildResource()
 {
 	auto rtvTexDesc = CD3DX12_RESOURCE_DESC::Tex2D(
-		rtvFormat, width, height, 6U, 0U, 1U, 0U,
+		rtvFormat, width, height, 6U, 1U, 1U, 0U,
 		D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET
 	);
 
@@ -18,7 +18,7 @@ void CubeMap::BuildResource()
 
 	ThrowIfFailed(device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-		D3D12_HEAP_FLAG_NONE, &rtvTexDesc, D3D12_RESOURCE_STATE_RENDER_TARGET,
+		D3D12_HEAP_FLAG_NONE, &rtvTexDesc, D3D12_RESOURCE_STATE_GENERIC_READ,
 		&clearValue, IID_PPV_ARGS(&RT)
 	));
 	

@@ -123,7 +123,14 @@ void DynamicCubeMapApp::Draw(const GameTimer& gt)
     auto passCB = currFrameResource->PassCB->Resource();
     pCommandList->SetGraphicsRootConstantBufferView(1, passCB->GetGPUVirtualAddress());
 
+    pCommandList->SetGraphicsRootDescriptorTable(4, CD3DX12_GPU_DESCRIPTOR_HANDLE(pSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart(),
+        4, cbvSrvDescriptorSize));
     pCommandList->SetPipelineState(PSOs["opaque"].Get());
+    DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::DynamicReflector]);
+
+    pCommandList->SetGraphicsRootDescriptorTable(4, CD3DX12_GPU_DESCRIPTOR_HANDLE(pSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart(),
+        3, cbvSrvDescriptorSize));
+   // pCommandList->SetPipelineState(PSOs["opaque"].Get());
     DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Opaque]);
 
     pCommandList->SetPipelineState(PSOs["sky"].Get());
@@ -148,6 +155,10 @@ void DynamicCubeMapApp::Draw(const GameTimer& gt)
 
 void DynamicCubeMapApp::DrawToCubeMap()
 {
+    pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
+        cubeMap->Resource(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET
+    ));
+
     auto passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
     pCommandList->SetPipelineState(PSOs["opaque"].Get());
     for (size_t i = 0; i < 6; i++)
@@ -170,7 +181,10 @@ void DynamicCubeMapApp::DrawToCubeMap()
 
         pCommandList->SetPipelineState(PSOs["opaque"].Get());
     }
-  
+    pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
+        cubeMap->Resource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ
+    ));
+
 }
 
 void DynamicCubeMapApp::CreateRtvAndDsvDescriptorHeaps()
