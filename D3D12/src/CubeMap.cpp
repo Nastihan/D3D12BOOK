@@ -34,14 +34,16 @@ void CubeMap::BuildResource()
 
 }
 
-void CubeMap::BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE cpuRtv, CD3DX12_CPU_DESCRIPTOR_HANDLE cpuDsv)
+void CubeMap::BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE cpuRtv, 
+	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle,
+	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuSrv, CD3DX12_GPU_DESCRIPTOR_HANDLE gpuSrv)
 {
 	for (size_t i = 0; i < 6; i++)
 	{
 		CD3DX12_CPU_DESCRIPTOR_HANDLE handle(cpuRtv, i, device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
 		this->cpuRtvs[i] = handle;
 	}
-	this->cpuDsv = cpuDsv;
+	this->cpuDsv = dsvHandle;
 
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc;
 	dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
@@ -61,4 +63,19 @@ void CubeMap::BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE cpuRtv, CD3DX12_CPU
 		rtvDesc.Texture2DArray.ArraySize = 1;
 		device->CreateRenderTargetView(RT.Get(), &rtvDesc, cpuRtvs[i]);
 	}
+
+	this->cpuSrv = cpuSrv;
+	this->gpuSrv = gpuSrv;
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+	srvDesc.Format = rtvFormat;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.TextureCube.MipLevels = 1;
+	srvDesc.TextureCube.MostDetailedMip = 0;
+	srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
+
+
+	device->CreateShaderResourceView(RT.Get(), &srvDesc, cpuSrv);
 }
+
+

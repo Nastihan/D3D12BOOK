@@ -6,7 +6,9 @@ class CubeMap
 public:
 	CubeMap(ID3D12Device* device, UINT width, UINT height, DXGI_FORMAT rtvFormat, DXGI_FORMAT dsvFormat);
 	void BuildResource();
-	void BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE cpuRtvs, CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle);
+	void BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE cpuRtv,
+		CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle, 
+		CD3DX12_CPU_DESCRIPTOR_HANDLE cpuSrv, CD3DX12_GPU_DESCRIPTOR_HANDLE gpuSrv);
 	auto Rtv(UINT i)
 	{
 		return cpuRtvs[i];
@@ -32,4 +34,6 @@ private:
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuDsv{};
 	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuRtvs[6]{};
+	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuSrv{};
+	CD3DX12_GPU_DESCRIPTOR_HANDLE gpuSrv{};
 };

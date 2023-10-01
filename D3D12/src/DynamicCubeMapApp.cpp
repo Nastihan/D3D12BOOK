@@ -87,7 +87,7 @@ void DynamicCubeMapApp::Draw(const GameTimer& gt)
 {
     auto cmdListAlloc = currFrameResource->pCmdListAlloc;
     ThrowIfFailed(cmdListAlloc->Reset());
-    ThrowIfFailed(pCommandList->Reset(cmdListAlloc.Get(), PSOs["opaque"].Get()));
+    ThrowIfFailed(pCommandList->Reset(cmdListAlloc.Get(), nullptr));
 
     pCommandList->RSSetViewports(1, &screenViewport);
     pCommandList->RSSetScissorRects(1, &scissorRect);
@@ -123,6 +123,7 @@ void DynamicCubeMapApp::Draw(const GameTimer& gt)
     auto passCB = currFrameResource->PassCB->Resource();
     pCommandList->SetGraphicsRootConstantBufferView(1, passCB->GetGPUVirtualAddress());
 
+    pCommandList->SetPipelineState(PSOs["opaque"].Get());
     DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Opaque]);
 
     pCommandList->SetPipelineState(PSOs["sky"].Get());
@@ -148,6 +149,7 @@ void DynamicCubeMapApp::Draw(const GameTimer& gt)
 void DynamicCubeMapApp::DrawToCubeMap()
 {
     auto passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
+    pCommandList->SetPipelineState(PSOs["opaque"].Get());
     for (size_t i = 0; i < 6; i++)
     {
         pCommandList->ClearRenderTargetView(
@@ -162,6 +164,11 @@ void DynamicCubeMapApp::DrawToCubeMap()
         pCommandList->SetGraphicsRootConstantBufferView(1, cbAddress);
 
         DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Opaque]);
+
+        pCommandList->SetPipelineState(PSOs["sky"].Get());
+        DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Sky]);
+
+        pCommandList->SetPipelineState(PSOs["opaque"].Get());
     }
   
 }
@@ -176,7 +183,7 @@ void DynamicCubeMapApp::CreateRtvAndDsvDescriptorHeaps()
     ThrowIfFailed(pDevice->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&pRtvHeap)));
 
     D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc{};
-    dsvHeapDesc.NumDescriptors = 1 + 1;
+    dsvHeapDesc.NumDescriptors = 2;
     dsvHeapDesc.NodeMask = 0;
     dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
     dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
@@ -441,7 +448,7 @@ void DynamicCubeMapApp::BuildRootSignature()
 void DynamicCubeMapApp::BuildDescriptorHeaps()
 {
     D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc{};
-    srvHeapDesc.NumDescriptors = 4;
+    srvHeapDesc.NumDescriptors = 5;
     srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
     srvHeapDesc.NodeMask = 0;
@@ -489,8 +496,11 @@ void DynamicCubeMapApp::BuildDescriptorHeaps()
     rtvHandle.Offset(2, rtvDescriptorSize);
     CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(pDsvHeap->GetCPUDescriptorHandleForHeapStart());
     dsvHandle.Offset(1, dsvDescriptorSize);
+    CD3DX12_GPU_DESCRIPTOR_HANDLE gpuSrvHandle(pSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart(),
+        4, cbvSrvDescriptorSize);
+    descriptorH.Offset(1, cbvSrvDescriptorSize);
 
-    cubeMap->BuildDescriptors(rtvHandle, dsvHandle);
+    cubeMap->BuildDescriptors(rtvHandle, dsvHandle, descriptorH, gpuSrvHandle);
 }
 
 void DynamicCubeMapApp::BuildShadersAndInputLayout()
@@ -878,13 +888,13 @@ void DynamicCubeMapApp::BuildRenderItems()
     globeRitem->StartIndexLocation = globeRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
     globeRitem->BaseVertexLocation = globeRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
 
-    //rItemLayer[(int)RenderLayer::Opaque].push_back(globeRitem.get());
-    //allRItems.push_back(std::move(globeRitem));
+    rItemLayer[(int)RenderLayer::DynamicReflector].push_back(globeRitem.get());
+    allRItems.push_back(std::move(globeRitem));
 
     auto gridRitem = std::make_unique<RenderItem>();
     gridRitem->World = MathHelper::Identity4x4();
     XMStoreFloat4x4(&gridRitem->TexTransform, XMMatrixScaling(8.0f, 8.0f, 1.0f));
-    gridRitem->ObjCBIndex = 3;
+    gridRitem->ObjCBIndex = 4;
     gridRitem->Mat = materials["tile0"].get();
     gridRitem->Geo = geometries["shapeGeo"].get();
     gridRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -896,8 +906,8 @@ void DynamicCubeMapApp::BuildRenderItems()
     allRItems.push_back(std::move(gridRitem));
 
     XMMATRIX brickTexTransform = XMMatrixScaling(1.5f, 2.0f, 1.0f);
-    UINT objCBIndex = 4;
-    for (int i = 0; i < 4; ++i)
+    UINT objCBIndex = 5;
+    for (int i = 0; i < 5; ++i)
     {
         auto leftCylRitem = std::make_unique<RenderItem>();
         auto rightCylRitem = std::make_unique<RenderItem>();

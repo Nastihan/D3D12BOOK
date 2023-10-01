@@ -31,6 +31,7 @@ enum class RenderLayer : int
 {
 	Opaque = 0,
 	Sky = 1,
+	DynamicReflector = 2,
 	Count
 
 };
