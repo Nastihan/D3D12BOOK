@@ -25,13 +25,14 @@ bool DynamicCubeMapApp::Initialize()
     //cam.LookAt(DirectX::XMFLOAT3{ 0.0f, 2.0f, -10.0f }, { 0.0f, 0.0f, 10.0f }, { 0.0f, 1.0f, 0.0f });
     BuildCubeMapCameras(0.0f, 2.0f, 0.0f);
   
-    cubeMap = std::make_unique<CubeMap>(pDevice.Get(), clientWidth, clientHeight, backBufferFormat, depthStencilFormat);
+    cubeMap = std::make_unique<CubeRenderTarget>(pDevice.Get(), clientWidth, clientHeight, backBufferFormat);
 
     cbvSrvDescriptorSize = pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
     LoadTextures();
     BuildRootSignature();
     BuildDescriptorHeaps();
+    BuildCubeDepthStencil();
     BuildShadersAndInputLayout();
     BuildShapeGeometry();
     BuildSkullGeometry();
@@ -86,92 +87,125 @@ void DynamicCubeMapApp::Update(const GameTimer& gt)
 void DynamicCubeMapApp::Draw(const GameTimer& gt)
 {
     auto cmdListAlloc = currFrameResource->pCmdListAlloc;
+
+    // Reuse the memory associated with command recording.
+    // We can only reset when the associated command lists have finished execution on the GPU.
     ThrowIfFailed(cmdListAlloc->Reset());
-    ThrowIfFailed(pCommandList->Reset(cmdListAlloc.Get(), nullptr));
+
+    // A command list can be reset after it has been added to the command queue via ExecuteCommandList.
+    // Reusing the command list reuses memory.
+    ThrowIfFailed(pCommandList->Reset(cmdListAlloc.Get(), PSOs["opaque"].Get()));
+
+    ID3D12DescriptorHeap* descriptorHeaps[] = { pSrvDescriptorHeap.Get() };
+    pCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
     pCommandList->RSSetViewports(1, &screenViewport);
     pCommandList->RSSetScissorRects(1, &scissorRect);
 
-    ID3D12DescriptorHeap* descHeaps[] = { pSrvDescriptorHeap.Get() };
-    pCommandList->SetDescriptorHeaps(_countof(descHeaps), descHeaps);
-
     pCommandList->SetGraphicsRootSignature(pRootSignature.Get());
 
+    // Bind all the materials used in this scene.  For structured buffers, we can bypass the heap and 
+    // set as a root descriptor.
     auto matBuffer = currFrameResource->MaterialBuffer->Resource();
     pCommandList->SetGraphicsRootShaderResourceView(2, matBuffer->GetGPUVirtualAddress());
 
-    pCommandList->SetGraphicsRootDescriptorTable(3, pSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+    // Bind the sky cube map.  For our demos, we just use one "world" cube map representing the environment
+    // from far away, so all objects will use the same cube map and we only need to set it once per-frame.  
+    // If we wanted to use "local" cube maps, we would have to change them per-object, or dynamically
+    // index into an array of cube maps.
 
-    pCommandList->SetGraphicsRootDescriptorTable(4, CD3DX12_GPU_DESCRIPTOR_HANDLE(pSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart(),
-        3, cbvSrvDescriptorSize));
+    CD3DX12_GPU_DESCRIPTOR_HANDLE skyTexDescriptor(pSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+    skyTexDescriptor.Offset(3, cbvSrvUavDescriptorSize);
+    pCommandList->SetGraphicsRootDescriptorTable(4, skyTexDescriptor);
+
+    // Bind all the textures used in this scene.  Observe
+    // that we only have to specify the first descriptor in the table.  
+    // The root signature knows how many descriptors are expected in the table.
+    pCommandList->SetGraphicsRootDescriptorTable(3, pSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 
     DrawToCubeMap();
 
-    pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
-        CurrentBackBuffer(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET
-    ));
+    
 
-    pCommandList->ClearRenderTargetView(
-        CurrentBackBufferView(), DirectX::Colors::MidnightBlue, 0, nullptr);
-    pCommandList->ClearDepthStencilView(
-        DepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+    // Indicate a state transition on the resource usage.
+    pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
+        D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
 
-    pCommandList->OMSetRenderTargets(
-        1, &CurrentBackBufferView(), true, &DepthStencilView());
+    // Clear the back buffer and depth buffer.
+    pCommandList->ClearRenderTargetView(CurrentBackBufferView(), DirectX::Colors::LightSteelBlue, 0, nullptr);
+    pCommandList->ClearDepthStencilView(DepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
-    auto passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
+    // Specify the buffers we are going to render to.
+    pCommandList->OMSetRenderTargets(1, &CurrentBackBufferView(), true, &DepthStencilView());
+
     auto passCB = currFrameResource->PassCB->Resource();
     pCommandList->SetGraphicsRootConstantBufferView(1, passCB->GetGPUVirtualAddress());
 
-    pCommandList->SetGraphicsRootDescriptorTable(4, CD3DX12_GPU_DESCRIPTOR_HANDLE(pSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart(),
-        4, cbvSrvDescriptorSize));
-    pCommandList->SetPipelineState(PSOs["opaque"].Get());
+
+    // Use the dynamic cube map for the dynamic reflectors layer.
+    CD3DX12_GPU_DESCRIPTOR_HANDLE dynamicTexDescriptor(pSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+    dynamicTexDescriptor.Offset(3 + 1, cbvSrvUavDescriptorSize);
+    pCommandList->SetGraphicsRootDescriptorTable(4, dynamicTexDescriptor);
+
     DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::DynamicReflector]);
 
-    pCommandList->SetGraphicsRootDescriptorTable(4, CD3DX12_GPU_DESCRIPTOR_HANDLE(pSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart(),
-        3, cbvSrvDescriptorSize));
+    // Use the static "background" cube map for the other objects (including the sky)
+    pCommandList->SetGraphicsRootDescriptorTable(4, skyTexDescriptor);
+
     DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Opaque]);
 
     pCommandList->SetPipelineState(PSOs["sky"].Get());
     DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Sky]);
 
-    pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
-        CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT
-    ));
+    // Indicate a state transition on the resource usage.
+    pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
+        D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
+    // Done recording commands.
     ThrowIfFailed(pCommandList->Close());
 
-    ID3D12CommandList* cmdLists[] = { pCommandList.Get() };
-    pCommandQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
+    // Add the command list to the queue for execution.
+    ID3D12CommandList* cmdsLists[] = { pCommandList.Get() };
+    pCommandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
 
-    ThrowIfFailed(pSwapChain->Present(0U, 0U));
+    // Swap the back and front buffers
+    ThrowIfFailed(pSwapChain->Present(0, 0));
     currBackBuffer = (currBackBuffer + 1) % SwapChainBufferCount;
 
+    // Advance the fence value to mark commands up to this fence point.
     currFrameResource->fenceVal = ++currentFence;
 
+    // Add an instruction to the command queue to set a new fence point. 
+    // Because we are on the GPU timeline, the new fence point won't be 
+    // set until the GPU finishes processing all the commands prior to this Signal().
     pCommandQueue->Signal(pFence.Get(), currentFence);
 }
 
 void DynamicCubeMapApp::DrawToCubeMap()
 {
-    pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
-        cubeMap->Resource(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET
-    ));
+    
 
-    auto passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
-    pCommandList->SetPipelineState(PSOs["opaque"].Get());
-    for (size_t i = 0; i < 6; i++)
+    // Change to RENDER_TARGET.
+    pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(cubeMap->Resource(),
+        D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET));
+
+    UINT passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
+
+    // For each cube map face.
+    for (int i = 0; i < 6; ++i)
     {
-        pCommandList->ClearRenderTargetView(
-            cubeMap->Rtv((int)i), DirectX::Colors::Black, 0, nullptr
-        );
-        pCommandList->ClearDepthStencilView(
-            cubeMap->Dsv(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
-        pCommandList->OMSetRenderTargets(1, &cubeMap->Rtv(i), true, &cubeMap->Dsv());
+        // Clear the back buffer and depth buffer.
+        pCommandList->ClearRenderTargetView(cubeMap->Rtv(i), DirectX::Colors::LightSteelBlue, 0, nullptr);
+        pCommandList->ClearDepthStencilView(cubeDSV, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
+        // Specify the buffers we are going to render to.
+        pCommandList->OMSetRenderTargets(1, &cubeMap->Rtv(i), true, &cubeDSV);
+
+        // Bind the pass constant buffer for this cube map face so we use 
+        // the right view/proj matrix for this cube face.
         auto passCB = currFrameResource->PassCB->Resource();
-        auto cbAddress = passCB->GetGPUVirtualAddress() + ((i + 1) * passCBByteSize);
-        pCommandList->SetGraphicsRootConstantBufferView(1, cbAddress);
+        D3D12_GPU_VIRTUAL_ADDRESS passCBAddress = passCB->GetGPUVirtualAddress() + (1 + i) * passCBByteSize;
+        pCommandList->SetGraphicsRootConstantBufferView(1, passCBAddress);
 
         DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Opaque]);
 
@@ -180,9 +214,10 @@ void DynamicCubeMapApp::DrawToCubeMap()
 
         pCommandList->SetPipelineState(PSOs["opaque"].Get());
     }
-    pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
-        cubeMap->Resource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ
-    ));
+
+    // Change back to GENERIC_READ so we can read the texture in a shader.
+    pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(cubeMap->Resource(),
+        D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
 
 }
 
@@ -201,6 +236,11 @@ void DynamicCubeMapApp::CreateRtvAndDsvDescriptorHeaps()
     dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
     dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
     ThrowIfFailed(pDevice->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&pDsvHeap)));
+
+    cubeDSV = CD3DX12_CPU_DESCRIPTOR_HANDLE(
+        pDsvHeap->GetCPUDescriptorHandleForHeapStart(),
+        1,
+        dsvDescriptorSize);
 }
 
 void DynamicCubeMapApp::OnMouseDown(WPARAM btnState, int x, int y)
@@ -505,15 +545,61 @@ void DynamicCubeMapApp::BuildDescriptorHeaps()
     srvDesc.Texture2D.MipLevels = skyTex->GetDesc().MipLevels;
     pDevice->CreateShaderResourceView(skyTex.Get(), &srvDesc, descriptorH);
 
-    CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(pRtvHeap->GetCPUDescriptorHandleForHeapStart());
-    rtvHandle.Offset(2, rtvDescriptorSize);
-    CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(pDsvHeap->GetCPUDescriptorHandleForHeapStart());
-    dsvHandle.Offset(1, dsvDescriptorSize);
-    CD3DX12_GPU_DESCRIPTOR_HANDLE gpuSrvHandle(pSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart(),
-        4, cbvSrvDescriptorSize);
-    descriptorH.Offset(1, cbvSrvDescriptorSize);
+    //mSkyTexHeapIndex = 3;
+    //mDynamicTexHeapIndex = mSkyTexHeapIndex + 1;
 
-    cubeMap->BuildDescriptors(rtvHandle, dsvHandle, descriptorH, gpuSrvHandle);
+    auto srvCpuStart = pSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+    auto srvGpuStart = pSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
+    auto rtvCpuStart = pRtvHeap->GetCPUDescriptorHandleForHeapStart();
+
+    // Cubemap RTV goes after the swap chain descriptors.
+    int rtvOffset = SwapChainBufferCount;
+
+    CD3DX12_CPU_DESCRIPTOR_HANDLE cubeRtvHandles[6];
+    for (int i = 0; i < 6; ++i)
+        cubeRtvHandles[i] = CD3DX12_CPU_DESCRIPTOR_HANDLE(rtvCpuStart, rtvOffset + i, rtvDescriptorSize);
+
+    // Dynamic cubemap SRV is after the sky SRV.
+    cubeMap->BuildDescriptors(
+        CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, 4, cbvSrvUavDescriptorSize),
+        CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, 4, cbvSrvUavDescriptorSize),
+        cubeRtvHandles);
+}
+
+void DynamicCubeMapApp::BuildCubeDepthStencil()
+{
+    // Create the depth/stencil buffer and view.
+    D3D12_RESOURCE_DESC depthStencilDesc;
+    depthStencilDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    depthStencilDesc.Alignment = 0;
+    depthStencilDesc.Width = clientWidth;
+    depthStencilDesc.Height = clientHeight;
+    depthStencilDesc.DepthOrArraySize = 1;
+    depthStencilDesc.MipLevels = 1;
+    depthStencilDesc.Format = depthStencilFormat;
+    depthStencilDesc.SampleDesc.Count = 1;
+    depthStencilDesc.SampleDesc.Quality = 0;
+    depthStencilDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    depthStencilDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+
+    D3D12_CLEAR_VALUE optClear;
+    optClear.Format = depthStencilFormat;
+    optClear.DepthStencil.Depth = 1.0f;
+    optClear.DepthStencil.Stencil = 0;
+    ThrowIfFailed(pDevice->CreateCommittedResource(
+        &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+        D3D12_HEAP_FLAG_NONE,
+        &depthStencilDesc,
+        D3D12_RESOURCE_STATE_COMMON,
+        &optClear,
+        IID_PPV_ARGS(cubeDepthStencilBuffer.GetAddressOf())));
+
+    // Create descriptor to mip level 0 of entire resource using the format of the resource.
+    pDevice->CreateDepthStencilView(cubeDepthStencilBuffer.Get(), nullptr, cubeDSV);
+
+    // Transition the resource from its initial state to be used as a depth buffer.
+    pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(cubeDepthStencilBuffer.Get(),
+        D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE));
 }
 
 void DynamicCubeMapApp::BuildShadersAndInputLayout()

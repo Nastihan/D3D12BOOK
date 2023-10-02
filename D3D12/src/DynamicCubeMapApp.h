@@ -3,7 +3,7 @@
 #include "UploadBuffer.h"
 #include "FrameResource.h"
 #include "Camera.h"
-#include "CubeMap.h"
+#include "CubeRenderTarget.h"
 
 struct RenderItem
 {
@@ -68,6 +68,7 @@ private:
 	void LoadTextures();
 	void BuildRootSignature();
 	void BuildDescriptorHeaps();
+	void BuildCubeDepthStencil();
 	void BuildShadersAndInputLayout();
 	void BuildShapeGeometry();
 	void BuildSkullGeometry();
@@ -84,7 +85,11 @@ private:
 	Camera cam;
 	Camera cubeMapCameras[6];
 
-	std::unique_ptr<CubeMap> cubeMap;
+	CD3DX12_CPU_DESCRIPTOR_HANDLE cubeDSV{};
+
+	Microsoft::WRL::ComPtr<ID3D12Resource> cubeDepthStencilBuffer = nullptr;
+
+	std::unique_ptr<CubeRenderTarget> cubeMap = nullptr;
 
 	std::vector<std::unique_ptr<FrameResource>> frameResources;
 	FrameResource* currFrameResource = nullptr;
