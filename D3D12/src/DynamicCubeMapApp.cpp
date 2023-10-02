@@ -25,7 +25,7 @@ bool DynamicCubeMapApp::Initialize()
     //cam.LookAt(DirectX::XMFLOAT3{ 0.0f, 2.0f, -10.0f }, { 0.0f, 0.0f, 10.0f }, { 0.0f, 1.0f, 0.0f });
     BuildCubeMapCameras(0.0f, 2.0f, 0.0f);
   
-    cubeMap = std::make_unique<CubeRenderTarget>(pDevice.Get(), clientWidth, clientHeight, backBufferFormat);
+    cubeMap = std::make_unique<CubeRenderTarget>(pDevice.Get(), 512U, 512U, DXGI_FORMAT_R8G8B8A8_UNORM);
 
     cbvSrvDescriptorSize = pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
@@ -99,8 +99,7 @@ void DynamicCubeMapApp::Draw(const GameTimer& gt)
     ID3D12DescriptorHeap* descriptorHeaps[] = { pSrvDescriptorHeap.Get() };
     pCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
-    pCommandList->RSSetViewports(1, &screenViewport);
-    pCommandList->RSSetScissorRects(1, &scissorRect);
+   
 
     pCommandList->SetGraphicsRootSignature(pRootSignature.Get());
 
@@ -126,6 +125,8 @@ void DynamicCubeMapApp::Draw(const GameTimer& gt)
     DrawToCubeMap();
 
     
+    pCommandList->RSSetViewports(1, &screenViewport);
+    pCommandList->RSSetScissorRects(1, &scissorRect);
 
     // Indicate a state transition on the resource usage.
     pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
@@ -184,6 +185,8 @@ void DynamicCubeMapApp::Draw(const GameTimer& gt)
 void DynamicCubeMapApp::DrawToCubeMap()
 {
     
+    pCommandList->RSSetViewports(1, &cubeMap->Viewport());
+    pCommandList->RSSetScissorRects(1, &cubeMap->ScissorRect());
 
     // Change to RENDER_TARGET.
     pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(cubeMap->Resource(),
