@@ -62,7 +62,7 @@
     <ClCompile Include="src\CubeRenderTarget.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\DynamicCubeMapApp.cpp">
+    <ClCompile Include="src\NormalMapApp.cpp">
       <Filter>Source Files\Apps</Filter>
     </ClCompile>
   </ItemGroup>
@@ -103,11 +103,11 @@
     <ClInclude Include="src\UploadBuffer.h">
       <Filter>Header Files\Bindable</Filter>
     </ClInclude>
-    <ClInclude Include="src\DynamicCubeMapApp.h">
-      <Filter>Header Files\Apps</Filter>
-    </ClInclude>
     <ClInclude Include="src\BlurFilter.h">
       <Filter>Header Files\Bindable</Filter>
+    </ClInclude>
+    <ClInclude Include="src\NormalMapApp.h">
+      <Filter>Header Files\Apps</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

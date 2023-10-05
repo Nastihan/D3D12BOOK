@@ -151,8 +151,8 @@
     <ClCompile Include="src\Common\GameTimer.cpp" />
     <ClCompile Include="src\Common\MathHelper.cpp" />
     <ClCompile Include="src\CubeRenderTarget.cpp" />
-    <ClCompile Include="src\DynamicCubeMapApp.cpp" />
     <ClCompile Include="src\FrameResource.cpp" />
+    <ClCompile Include="src\NormalMapApp.cpp" />
     <ClCompile Include="src\WinMain.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -161,7 +161,6 @@
     <ClInclude Include="src\Common\GeometryGenerator.h" />
     <ClInclude Include="src\Common\Waves.h" />
     <ClInclude Include="src\CubeRenderTarget.h" />
-    <ClInclude Include="src\DynamicCubeMapApp.h" />
     <ClInclude Include="src\FrameResource.h" />
     <ClInclude Include="src\Common\d3dx12.h" />
     <ClInclude Include="src\Common\D3DApp.h" />
@@ -169,6 +168,7 @@
     <ClInclude Include="src\Common\DDSTextureLoader.h" />
     <ClInclude Include="src\Common\GameTimer.h" />
     <ClInclude Include="src\Common\MathHelper.h" />
+    <ClInclude Include="src\NormalMapApp.h" />
     <ClInclude Include="src\UploadBuffer.h" />
   </ItemGroup>
   <ItemGroup>
