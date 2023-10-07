@@ -100,20 +100,14 @@ void NormalMapApp::Draw(const GameTimer& gt)
     auto matBuffer = currFrameResource->MaterialBuffer->Resource();
     pCommandList->SetGraphicsRootShaderResourceView(2, matBuffer->GetGPUVirtualAddress());
 
-    // Bind the sky cube map.  For our demos, we just use one "world" cube map representing the environment
-    // from far away, so all objects will use the same cube map and we only need to set it once per-frame.  
-    // If we wanted to use "local" cube maps, we would have to change them per-object, or dynamically
-    // index into an array of cube maps.
-
     CD3DX12_GPU_DESCRIPTOR_HANDLE skyTexDescriptor(pSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
     skyTexDescriptor.Offset(3, cbvSrvUavDescriptorSize);
     pCommandList->SetGraphicsRootDescriptorTable(4, skyTexDescriptor);
 
-    // Bind all the textures used in this scene.  Observe
-    // that we only have to specify the first descriptor in the table.  
-    // The root signature knows how many descriptors are expected in the table.
     pCommandList->SetGraphicsRootDescriptorTable(3, pSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 
+    auto passCB = currFrameResource->PassCB->Resource();
+    pCommandList->SetGraphicsRootConstantBufferView(1, passCB->GetGPUVirtualAddress());
 
     pCommandList->RSSetViewports(1, &screenViewport);
     pCommandList->RSSetScissorRects(1, &scissorRect);
@@ -129,37 +123,24 @@ void NormalMapApp::Draw(const GameTimer& gt)
     // Specify the buffers we are going to render to.
     pCommandList->OMSetRenderTargets(1, &CurrentBackBufferView(), true, &DepthStencilView());
 
-    auto passCB = currFrameResource->PassCB->Resource();
-    pCommandList->SetGraphicsRootConstantBufferView(1, passCB->GetGPUVirtualAddress());
-
-    pCommandList->SetGraphicsRootDescriptorTable(4, skyTexDescriptor);
-
     DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Opaque]);
 
     pCommandList->SetPipelineState(PSOs["sky"].Get());
     DrawRenderItems(pCommandList.Get(), rItemLayer[(int)RenderLayer::Sky]);
 
-    // Indicate a state transition on the resource usage.
     pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
         D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
-    // Done recording commands.
     ThrowIfFailed(pCommandList->Close());
 
-    // Add the command list to the queue for execution.
     ID3D12CommandList* cmdsLists[] = { pCommandList.Get() };
     pCommandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
 
-    // Swap the back and front buffers
     ThrowIfFailed(pSwapChain->Present(0, 0));
     currBackBuffer = (currBackBuffer + 1) % SwapChainBufferCount;
 
-    // Advance the fence value to mark commands up to this fence point.
     currFrameResource->fenceVal = ++currentFence;
 
-    // Add an instruction to the command queue to set a new fence point. 
-    // Because we are on the GPU timeline, the new fence point won't be 
-    // set until the GPU finishes processing all the commands prior to this Signal().
     pCommandQueue->Signal(pFence.Get(), currentFence);
 }
 
@@ -373,7 +354,7 @@ void NormalMapApp::BuildRootSignature()
 void NormalMapApp::BuildDescriptorHeaps()
 {
     D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc{};
-    srvHeapDesc.NumDescriptors = 5;
+    srvHeapDesc.NumDescriptors = 4;
     srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
     srvHeapDesc.NodeMask = 0;
@@ -416,22 +397,6 @@ void NormalMapApp::BuildDescriptorHeaps()
     srvDesc.Format = skyTex->GetDesc().Format;
     srvDesc.Texture2D.MipLevels = skyTex->GetDesc().MipLevels;
     pDevice->CreateShaderResourceView(skyTex.Get(), &srvDesc, descriptorH);
-
-    //mSkyTexHeapIndex = 3;
-    //mDynamicTexHeapIndex = mSkyTexHeapIndex + 1;
-
-    auto srvCpuStart = pSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-    auto srvGpuStart = pSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
-    auto rtvCpuStart = pRtvHeap->GetCPUDescriptorHandleForHeapStart();
-
-    // Cubemap RTV goes after the swap chain descriptors.
-    int rtvOffset = SwapChainBufferCount;
-
-    CD3DX12_CPU_DESCRIPTOR_HANDLE cubeRtvHandles[6];
-    for (int i = 0; i < 6; ++i)
-        cubeRtvHandles[i] = CD3DX12_CPU_DESCRIPTOR_HANDLE(rtvCpuStart, rtvOffset + i, rtvDescriptorSize);
-
-
 }
 
 void NormalMapApp::BuildShadersAndInputLayout()
