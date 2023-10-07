@@ -129,11 +129,13 @@ void CubeRenderTarget::BuildResource()
 	texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 	texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 
+	D3D12_CLEAR_VALUE clearVal{ mFormat,  { 0.690196097f, 0.768627524f, 0.870588303f, 1.f } };
+
 	ThrowIfFailed(md3dDevice->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		D3D12_HEAP_FLAG_NONE,
 		&texDesc,
 		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
+		&clearVal,
 		IID_PPV_ARGS(&mCubeMap)));
 }
