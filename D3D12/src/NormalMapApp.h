@@ -50,9 +50,6 @@ private:
 	virtual void OnResize() override;
 	virtual void Update(const GameTimer& gt) override;
 	virtual void Draw(const GameTimer& gt) override;
-	void DrawToCubeMap();
-
-	virtual void CreateRtvAndDsvDescriptorHeaps() override;
 
 	virtual void OnMouseDown(WPARAM btnState, int x, int y)override;
 	virtual void OnMouseUp(WPARAM btnState, int x, int y)override;
@@ -63,33 +60,22 @@ private:
 	void UpdateObjectCBs(const GameTimer& gt);
 	void UpdateMaterialBuffer(const GameTimer& gt);
 	void UpdateMainPassCB(const GameTimer& gt);
-	void UpdateCubeMapPassCB(const GameTimer& gt);
 
 	void LoadTextures();
 	void BuildRootSignature();
 	void BuildDescriptorHeaps();
-	void BuildCubeDepthStencil();
 	void BuildShadersAndInputLayout();
 	void BuildShapeGeometry();
-	void BuildSkullGeometry();
 	void BuildPSOs();
 	void BuildFrameResources();
 	void BuildMaterials();
 	void BuildRenderItems();
 	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& rItems);
 
-	void BuildCubeMapCameras(float x, float y, float z);
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6>  GetStaticSamplers();
 private:
 	Camera cam;
-	Camera cubeMapCameras[6];
-
-	CD3DX12_CPU_DESCRIPTOR_HANDLE cubeDSV{};
-
-	Microsoft::WRL::ComPtr<ID3D12Resource> cubeDepthStencilBuffer = nullptr;
-
-	std::unique_ptr<CubeRenderTarget> cubeMap = nullptr;
 
 	std::vector<std::unique_ptr<FrameResource>> frameResources;
 	FrameResource* currFrameResource = nullptr;
@@ -114,11 +100,7 @@ private:
 	// render items divided by PSO
 	std::vector<RenderItem*> rItemLayer[(int)RenderLayer::Count];
 
-	RenderItem* skullRItem = nullptr;
-
 	PassConstants mainPassCB;
-
-	PassConstants cubeMapPassCBs[6];
 
 	DirectX::XMFLOAT3 eyePos = { 0.0f, 0.0f, 0.0f };
 	DirectX::XMFLOAT4X4 view = MathHelper::Identity4x4();
