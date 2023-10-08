@@ -19,7 +19,7 @@ struct MaterialData
     float Roughness;
     float4x4 MatTransform;
     uint DiffuseMapIndex;
-    uint MatPad0;
+    uint NormalMapIndex;
     uint MatPad1;
     uint MatPad2;
 };
@@ -27,7 +27,7 @@ struct MaterialData
 StructuredBuffer<MaterialData> materialData : register(t0, space1);
 
 TextureCube cubeMap : register(t0);
-Texture2D gDiffuseMap[3] : register(t1);
+Texture2D gDiffuseMap[10] : register(t1);
 
 SamplerState gsamPointWrap : register(s0);
 SamplerState gsamPointClamp : register(s1);
@@ -66,8 +66,4 @@ cbuffer cbPass : register(b1)
     
     Light gLights[MaxLights];
 };
-
-
-
-
 

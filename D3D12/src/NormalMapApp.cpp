@@ -101,7 +101,7 @@ void NormalMapApp::Draw(const GameTimer& gt)
     pCommandList->SetGraphicsRootShaderResourceView(2, matBuffer->GetGPUVirtualAddress());
 
     CD3DX12_GPU_DESCRIPTOR_HANDLE skyTexDescriptor(pSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
-    skyTexDescriptor.Offset(3, cbvSrvUavDescriptorSize);
+    skyTexDescriptor.Offset(6, cbvSrvUavDescriptorSize);
     pCommandList->SetGraphicsRootDescriptorTable(4, skyTexDescriptor);
 
     pCommandList->SetGraphicsRootDescriptorTable(3, pSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
@@ -242,6 +242,7 @@ void NormalMapApp::UpdateMaterialBuffer(const GameTimer& gt)
             matData.Roughness = mat->Roughness;
             XMStoreFloat4x4(&matData.MatTransform, XMMatrixTranspose(matTransform));
             matData.DiffuseMapIndex = mat->DiffuseSrvHeapIndex;
+            matData.NormalMapIndex = mat->NormalSrvHeapIndex;
 
             currMaterialBuffer->CopyData(mat->MatCBIndex, matData);
 
@@ -291,16 +292,22 @@ void NormalMapApp::LoadTextures()
     std::vector<std::string> texNames =
     {
         "bricksDiffuseMap",
+        "bricksNormalMap",
         "tileDiffuseMap",
+        "tileNormalMap",
         "defaultDiffuseMap",
+        "defaultNormalMap",
         "skyCubeMap"
     };
 
     std::vector<std::wstring> texFilenames =
     {
         L"Textures/bricks2.dds",
+        L"Textures/bricks2_nmap.dds",
         L"Textures/tile.dds",
+        L"Textures/tile_nmap.dds",
         L"Textures/white1x1.dds",
+        L"Textures/default_nmap.dds",
         L"Textures/snowcube1024.dds"
     };
 
@@ -320,7 +327,7 @@ void NormalMapApp::LoadTextures()
 void NormalMapApp::BuildRootSignature()
 {
     CD3DX12_DESCRIPTOR_RANGE texTable{};
-    texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3, 1U, 0U);
+    texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 10, 1U, 0U);
     CD3DX12_DESCRIPTOR_RANGE cubeMapTable{};
     cubeMapTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0U, 0U);
 
@@ -354,49 +361,49 @@ void NormalMapApp::BuildRootSignature()
 void NormalMapApp::BuildDescriptorHeaps()
 {
     D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc{};
-    srvHeapDesc.NumDescriptors = 4;
+    srvHeapDesc.NumDescriptors = 10;
     srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
     srvHeapDesc.NodeMask = 0;
     ThrowIfFailed(pDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&pSrvDescriptorHeap)));
 
-    CD3DX12_CPU_DESCRIPTOR_HANDLE descriptorH(pSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+    CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(pSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
-    auto bricksTex = textures["bricksDiffuseMap"]->Resource;
-    auto tileTex = textures["tileDiffuseMap"]->Resource;
-    auto whiteTex = textures["defaultDiffuseMap"]->Resource;
-    auto skyTex = textures["skyCubeMap"]->Resource;
+    std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> tex2DList =
+    {
+        textures["bricksDiffuseMap"]->Resource,
+        textures["bricksNormalMap"]->Resource,
+        textures["tileDiffuseMap"]->Resource,
+        textures["tileNormalMap"]->Resource,
+        textures["defaultDiffuseMap"]->Resource,
+        textures["defaultNormalMap"]->Resource
+    };
 
-    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+    auto skyCubeMap = textures["skyCubeMap"]->Resource;
+
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-    srvDesc.Format = bricksTex->GetDesc().Format;
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
     srvDesc.Texture2D.MostDetailedMip = 0;
-    srvDesc.Texture2D.MipLevels = bricksTex->GetDesc().MipLevels;
     srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
-    pDevice->CreateShaderResourceView(bricksTex.Get(), &srvDesc, descriptorH);
 
-    // next
-    descriptorH.Offset(1, cbvSrvDescriptorSize);
+    for (UINT i = 0; i < (UINT)tex2DList.size(); ++i)
+    {
+        srvDesc.Format = tex2DList[i]->GetDesc().Format;
+        srvDesc.Texture2D.MipLevels = tex2DList[i]->GetDesc().MipLevels;
+        pDevice->CreateShaderResourceView(tex2DList[i].Get(), &srvDesc, hDescriptor);
 
-    srvDesc.Format = tileTex->GetDesc().Format;
-    srvDesc.Texture2D.MipLevels = tileTex->GetDesc().MipLevels;
-    pDevice->CreateShaderResourceView(tileTex.Get(), &srvDesc, descriptorH);
-
-    // next
-    descriptorH.Offset(1, cbvSrvDescriptorSize);
-
-    srvDesc.Format = whiteTex->GetDesc().Format;
-    srvDesc.Texture2D.MipLevels = whiteTex->GetDesc().MipLevels;
-    pDevice->CreateShaderResourceView(whiteTex.Get(), &srvDesc, descriptorH);
-
-    // next
-    descriptorH.Offset(1, cbvSrvDescriptorSize);
+        // next descriptor
+        hDescriptor.Offset(1, cbvSrvDescriptorSize);
+    }
 
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
-    srvDesc.Format = skyTex->GetDesc().Format;
-    srvDesc.Texture2D.MipLevels = skyTex->GetDesc().MipLevels;
-    pDevice->CreateShaderResourceView(skyTex.Get(), &srvDesc, descriptorH);
+    srvDesc.TextureCube.MostDetailedMip = 0;
+    srvDesc.TextureCube.MipLevels = skyCubeMap->GetDesc().MipLevels;
+    srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
+    srvDesc.Format = skyCubeMap->GetDesc().Format;
+    pDevice->CreateShaderResourceView(skyCubeMap.Get(), &srvDesc, hDescriptor);
+
 }
 
 void NormalMapApp::BuildShadersAndInputLayout()
@@ -601,8 +608,8 @@ void NormalMapApp::BuildMaterials()
 
     auto tile0 = std::make_unique<Material>();
     tile0->Name = "tile0";
-    tile0->MatCBIndex = 1;
-    tile0->DiffuseSrvHeapIndex = 1;
+    tile0->MatCBIndex = 2;
+    tile0->DiffuseSrvHeapIndex = 2;
     tile0->NormalSrvHeapIndex = 3;
     tile0->DiffuseAlbedo = XMFLOAT4(0.9f, 0.9f, 0.9f, 1.0f);
     tile0->FresnelR0 = XMFLOAT3(0.2f, 0.2f, 0.2f);
@@ -610,8 +617,8 @@ void NormalMapApp::BuildMaterials()
 
     auto mirror0 = std::make_unique<Material>();
     mirror0->Name = "mirror0";
-    mirror0->MatCBIndex = 2;
-    mirror0->DiffuseSrvHeapIndex = 2;
+    mirror0->MatCBIndex = 3;
+    mirror0->DiffuseSrvHeapIndex = 4;
     mirror0->NormalSrvHeapIndex = 5;
     mirror0->DiffuseAlbedo = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
     mirror0->FresnelR0 = XMFLOAT3(0.98f, 0.97f, 0.95f);
@@ -619,8 +626,8 @@ void NormalMapApp::BuildMaterials()
 
     auto sky = std::make_unique<Material>();
     sky->Name = "sky";
-    sky->MatCBIndex = 3;
-    sky->DiffuseSrvHeapIndex = 3;
+    sky->MatCBIndex = 4;
+    sky->DiffuseSrvHeapIndex = 6;
     sky->NormalSrvHeapIndex = 7;
     sky->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
     sky->FresnelR0 = XMFLOAT3(0.1f, 0.1f, 0.1f);
